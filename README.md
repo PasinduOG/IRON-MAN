@@ -37,7 +37,7 @@ A WhatsApp bot built with Baileys that responds to greetings with a Jarvis-style
 
 2. **Create a new Heroku app:**
    ```bash
-   heroku create your-bot-name
+   heroku create iron-man-bot
    ```
 
 3. **Set up Git (if not already done):**
