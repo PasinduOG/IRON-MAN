@@ -105,27 +105,34 @@ async function startBot() {
                 image: imageBuffer,
                 caption: `🤖 *IRON-MAN Bot Help Center*
 
-                Available Commands:
-                - *!commands* : List all commands
-                - *!sticker* : Convert image to sticker
-                - *!asticker* : Convert video/GIF to animated sticker
+Available Commands:
+- *!commands* : List all commands
+- *!sticker* : Convert image to sticker
+- *!asticker* : Convert video/GIF to animated sticker
 
-                ⚙️ Bot created by *Pasindu OG Dev*
-                📌 Version: 1.2.1`
+🔍 Developer Info:
+- Ask "who is pasindu" to learn about the developer
+
+⚙️ Bot created by *Pasindu OG Dev*
+📌 Version: 1.2.1`
             });
         }
 
         if (messageText === '!commands') {
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `📝 Available Commands:
-                - hi, hello, hey : Casual Jarvis greeting
-                - jarvis : Formal greeting
-                - !commands : Show all commands
-                - !help : Get help info
-                - !sticker : Convert image to sticker
-                - !asticker : Convert video/GIF to animated sticker\
+- hi, hello, hey : Casual Jarvis greeting
+- jarvis : Formal greeting  
+- !commands : Show all commands
+- !help : Get help info
+- !sticker : Convert image to sticker
+- !asticker : Convert video/GIF to animated sticker
 
-                Use them in chat to try them out! 👌` })
+🔍 Developer Info:
+- "who is pasindu" : Learn about the developer
+- "about og" : Developer background & projects
+
+Use them in chat to try them out! 👌` })
         }
 
         // Enhanced regex pattern for developer info queries
