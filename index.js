@@ -1,14 +1,13 @@
-const { useMultiFileAuthState, default: makeWASocket, DisconnectReason, fetchLatestBaileysVersion } = require("@whiskeysockets/baileys");
+const { useMultiFileAuthState, default: makeWASocket, DisconnectReason, fetchLatestBaileysVersion, downloadContentFromMessage } = require("@whiskeysockets/baileys");
 const qrcode = require('qrcode-terminal');
 const QRCode = require('qrcode');
 const Pino = require('pino');
 const fs = require('fs');
 const sharp = require('sharp');
-const axios = require('axios');
 
 const welcomeMessage = "Hello!... I'm Jarvis. How can I assist you?...😊";
 
-// For Heroku deployment
+// For Heroku deployment - Please don't edit this code (Use .env instead)
 const PORT = process.env.PORT || 3000;
 
 // Store QR code data
@@ -34,7 +33,7 @@ async function startBot() {
             // Display QR in terminal
             qrcode.generate(qr, { small: true });
             console.log('Scan the QR code above with your WhatsApp');
-            
+
             // Store QR for web display
             currentQR = qr;
             isConnected = false;
@@ -59,23 +58,92 @@ async function startBot() {
 
     sock.ev.on('creds.update', saveCreds);
 
-    sock.ev.on('messages.upsert', ({ messages }) => {
+    // Handle message commands
+    sock.ev.on('messages.upsert', async ({ messages }) => {
         const msg = messages[0];
         if (!msg.message) return;
         console.log(`New message from ${msg.key.remoteJid}:`, msg.message);
 
-        const messageText = msg.message?.conversation || '';
+        // Extract message text from different message types
+        const messageText = msg.message?.conversation ||
+            msg.message?.extendedTextMessage?.text ||
+            msg.message?.imageMessage?.caption ||
+            '';
+
         const greetingRegex = /^(hi|hello|hey)(\s|$)/i;
 
         if (greetingRegex.test(messageText)) {
             sock.sendMessage(msg.key.remoteJid, { text: welcomeMessage });
+        }
+
+        // Sticker creation command
+        if (messageText.startsWith('!sticker') || messageText === '!sticker') {
+            try {
+                const quoted = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
+
+                if (quoted?.imageMessage) {
+                    console.log('Processing sticker from quoted image...');
+                    const buffer = await downloadMedia(sock, quoted.imageMessage);
+
+                    const webpBuffer = await sharp(buffer)
+                        .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+                        .webp({ quality: 80 })
+                        .toBuffer();
+
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        sticker: webpBuffer
+                    }, { quoted: msg });
+
+                } else if (msg.message?.imageMessage) {
+                    console.log('Processing sticker from direct image...');
+                    const buffer = await downloadMedia(sock, msg.message.imageMessage);
+
+                    const webpBuffer = await sharp(buffer)
+                        .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+                        .webp({ quality: 80 })
+                        .toBuffer();
+
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        sticker: webpBuffer
+                    });
+
+                } else {
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: '❗ Please send an image with !sticker caption or reply to an image with !sticker\n\n📝 Usage:\n• Send image with caption: !sticker\n• Reply to image with: !sticker'
+                    });
+                }
+            } catch (error) {
+                console.error('Error creating sticker:', error);
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Failed to create sticker. Please try again with a valid image.'
+                });
+            }
+        }
+
+        // Alternative: Just detect any image and provide sticker option
+        else if (msg.message?.imageMessage && !messageText) {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: '📸 I see you sent an image! Send "!sticker" to convert it to a sticker.'
+            });
         }
     });
 
     return sock;
 }
 
-// Start the bot
+// Helper: Download image media buffer
+async function downloadMedia(sock, message) {
+    const stream = await downloadContentFromMessage(message, 'image');
+    let buffer = Buffer.from([]);
+
+    for await (const chunk of stream) {
+        buffer = Buffer.concat([buffer, chunk]);
+    }
+
+    return buffer;
+}
+
+// Start the bot - Please don't edit this code
 startBot().catch(err => {
     console.error('Error starting bot:', err);
     setTimeout(() => {
@@ -84,7 +152,7 @@ startBot().catch(err => {
     }, 5000);
 });
 
-// Keep-alive ping for Heroku
+// Keep-alive ping for Heroku - Please don't edit this code
 const express = require('express');
 const app = express();
 
