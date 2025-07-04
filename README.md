@@ -8,6 +8,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 - ❓ **Help System** - Interactive help center with IRON-MAN themed responses
 - 🎬 **Animated Sticker Creator** - Convert videos/GIFs to animated WebP stickers with `!asticker` command
 - 👨‍💻 **Developer Info** - Smart developer information with image preview and infinite loop prevention
+- ❌ **Invalid Command Handler** - Video GIF preview response for unrecognized commands with helpful suggestions
 - 🗄️ **MongoDB Storage** - Persistent session storage using MongoDB Atlas
 - 🌐 **Web QR Interface** - Beautiful HTML page for easy QR code scanning
 - 🔄 **Auto Reconnection** - Automatic reconnection on disconnect
@@ -367,6 +368,9 @@ Bot: [logs "🚫 Ignoring bot's own developer info message" and doesn't respond 
 
 User: [sends video without caption]
 Bot: "🎬 Sir I see you sent a video/GIF! Send '!asticker' to convert it to an animated sticker."
+
+User: "!unknown"
+Bot: [sends IRON-MAN GIF with invalid command message and helpful command suggestions]
 ```
 
 ### Jarvis Personality Features
@@ -462,12 +466,42 @@ heroku config
 - 🔍 **Improved Message Detection** - Multi-layered checks for bot-generated content
 - ⚡ **Smart Length Filtering** - Messages >100 characters automatically filtered as bot responses
 - 🎯 **Keyword-Based Prevention** - Comprehensive keyword detection for all bot content types
+- ⚠️ **Fixed Invalid Command Logic** - Corrected boolean logic for proper command validation
 
 ### Enhancements:
 - 📊 **Better Error Logging** - Enhanced console logging for debugging
 - 🛡️ **Robust Self-Detection** - Multiple fallback mechanisms to prevent self-triggering
 - 🔄 **Improved Stability** - More reliable message processing with enhanced filtering
 - 📝 **Updated Documentation** - Comprehensive troubleshooting guide for infinite loop issues
+- 🎬 **Invalid Command GIF Response** - Added IRON-MAN GIF preview for unrecognized commands with helpful suggestions
+
+## 🚫 Invalid Command Video Handler
+
+The bot now features a sophisticated invalid command handler that provides **video GIF-like previews** for unrecognized commands:
+
+### **Video GIF Preview Response** 🎬
+- **Primary Response**: Sends `ironman.mp4` as a GIF-like video preview with loop playback
+- **Smart Fallback System**: 
+  1. **Video as GIF** (`gifPlayback: true`) - Provides seamless looping animation
+  2. **Regular Video** - Standard video playback if GIF mode fails
+  3. **Document Attachment** - Sends video as downloadable file if direct sending fails
+  4. **Static Image** - Falls back to `ironman.jpg` if video completely fails
+  5. **Text-Only** - Ultimate fallback for maximum compatibility
+
+### **Features** ✨
+- **Visual Engagement**: Dynamic video preview instead of static responses
+- **Error Recovery**: Multi-layer fallback ensures message delivery
+- **Detailed Logging**: Comprehensive console output for debugging
+- **User Guidance**: Clear command list and usage instructions
+
+### **Example Usage:**
+```
+User: "!unknown"
+Bot: [sends ironman.mp4 as GIF-like video with invalid command message and helpful suggestions]
+
+User: "!test123"  
+Bot: [video preview with: "❌ Invalid Command: '!test123' - Sir, that command is not recognized..."]
+```
 
 ## 🔮 Future Features
 

@@ -73,10 +73,10 @@ async function startBot() {
     sock.ev.on('messages.upsert', async ({ messages }) => {
         const msg = messages[0];
         if (!msg.message) return;
-        
+
         // Ignore messages from the bot itself to prevent infinite loops
         if (msg.key.fromMe) return;
-        
+
         console.log(`New message from ${msg.key.remoteJid}:`, msg.message);
 
         // Extract message text from different message types
@@ -105,34 +105,34 @@ async function startBot() {
                 image: imageBuffer,
                 caption: `🤖 *IRON-MAN Bot Help Center*
 
-Available Commands:
-- *!commands* : List all commands
-- *!sticker* : Convert image to sticker
-- *!asticker* : Convert video/GIF to animated sticker
+                Available Commands:
+                - *!commands* : List all commands
+                - *!sticker* : Convert image to sticker
+                - *!asticker* : Convert video/GIF to animated sticker
 
-🔍 Developer Info:
-- Ask "who is pasindu" to learn about the developer
+                🔍 Developer Info:
+                - Ask "who is pasindu" to learn about the developer
 
-⚙️ Bot created by *Pasindu OG Dev*
-📌 Version: 1.2.1`
+                ⚙️ Bot created by *Pasindu OG Dev*
+                📌 Version: 1.2.1`
             });
         }
 
         if (messageText === '!commands') {
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `📝 Available Commands:
-- hi, hello, hey : Casual Jarvis greeting
-- jarvis : Formal greeting  
-- !commands : Show all commands
-- !help : Get help info
-- !sticker : Convert image to sticker
-- !asticker : Convert video/GIF to animated sticker
+                - hi, hello, hey : Casual Jarvis greeting
+                - jarvis : Formal greeting  
+                - !commands : Show all commands
+                - !help : Get help info
+                - !sticker : Convert image to sticker
+                - !asticker : Convert video/GIF to animated sticker
 
-🔍 Developer Info:
-- "who is pasindu" : Learn about the developer
-- "about og" : Developer background & projects
+                🔍 Developer Info:
+                - "who is pasindu" : Learn about the developer
+                - "about og" : Developer background & projects
 
-Use them in chat to try them out! 👌` })
+                Use them in chat to try them out! 👌` })
         }
 
         // Enhanced regex pattern for developer info queries
@@ -146,7 +146,7 @@ Use them in chat to try them out! 👌` })
             console.log(`👨‍💻 Developer info requested by ${senderName}`);
 
             // Enhanced check to prevent responding to bot's own captions and messages
-            if (messageText.includes('Built with ❤️ by Pasindu Madhuwantha') || 
+            if (messageText.includes('Built with ❤️ by Pasindu Madhuwantha') ||
                 messageText.includes('About Pasindu Madhuwantha') ||
                 messageText.includes('Professional Background:') ||
                 messageText.includes('Technical Skills:') ||
@@ -241,7 +241,7 @@ Use them in chat to try them out! 👌` })
                 console.log('✅ Developer info sent successfully with image preview');
             } catch (error) {
                 console.error('Error sending developer info:', error);
-                
+
                 // Fallback: Send text-only developer info if image fails
                 const developerInfoText = `👨‍💻 *About Pasindu Madhuwantha (PasinduOG)*\n\n` +
                     `🌟 Backend Developer & Technology Enthusiast\n` +
@@ -405,6 +405,89 @@ Use them in chat to try them out! 👌` })
             await sock.sendMessage(msg.key.remoteJid, {
                 text: '🎬 Sir I see you sent a video/GIF! Send "!asticker" to convert it to an animated sticker.'
             });
+        }
+
+        // Invalid command detection with video preview (GIF-like)
+        if (messageText.startsWith('!') && 
+            messageText !== '!commands' && 
+            messageText !== '!help' && 
+            messageText !== '!sticker' && 
+            messageText !== '!asticker') {
+            
+            console.log(`❌ Invalid command "${messageText}", sending video GIF response...`);
+            
+            try {
+                console.log('📂 Reading IRON-MAN video file...');
+                const ironmanVideoBuffer = fs.readFileSync('./src/ironman.mp4');
+                console.log(`📏 Video file size: ${(ironmanVideoBuffer.length / 1024).toFixed(2)} KB`);
+                
+                const invalidCommandMessage = `❌ *Invalid Command: "${messageText}"*\n\n` +
+                    `🤖 Sir, that command is not recognized in my database.\n\n` +
+                    `📝 *Available Commands:*\n` +
+                    `• !help - Get help center\n` +
+                    `• !commands - Show all commands\n` +
+                    `• !sticker - Convert image to sticker\n` +
+                    `• !asticker - Convert video/GIF to animated sticker\n\n` +
+                    `🔍 *Developer Info:*\n` +
+                    `• "who is pasindu" - Learn about the developer\n\n` +
+                    `💡 *Tip:* Use !help for detailed information about each command.\n\n` +
+                    `⚙️ *IRON-MAN Bot v1.2.1*`;
+
+                // Try multiple methods to send the video as GIF-like preview
+                try {
+                    console.log('🎬 Attempting to send video as GIF playback...');
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        video: ironmanVideoBuffer,
+                        gifPlayback: true,
+                        caption: invalidCommandMessage,
+                        mimetype: 'video/mp4',
+                        fileName: 'ironman.mp4'
+                    });
+                    console.log('✅ Invalid command video sent successfully as GIF playback');
+                } catch (videoGifError) {
+                    console.log('⚠️ Video as GIF failed:', videoGifError.message);
+                    try {
+                        console.log('🎥 Attempting to send as regular video...');
+                        await sock.sendMessage(msg.key.remoteJid, {
+                            video: ironmanVideoBuffer,
+                            caption: invalidCommandMessage,
+                            mimetype: 'video/mp4',
+                            fileName: 'ironman.mp4'
+                        });
+                        console.log('✅ Invalid command video sent successfully as regular video');
+                    } catch (regularVideoError) {
+                        console.log('⚠️ Regular video failed:', regularVideoError.message);
+                        // Try sending as document
+                        console.log('📄 Attempting to send video as document...');
+                        await sock.sendMessage(msg.key.remoteJid, {
+                            document: ironmanVideoBuffer,
+                            fileName: 'ironman.mp4',
+                            mimetype: 'video/mp4',
+                            caption: invalidCommandMessage
+                        });
+                        console.log('✅ Invalid command video sent successfully as document');
+                    }
+                }
+                
+            } catch (videoError) {
+                console.error('🚨 All video methods failed:', videoError.message);
+                // Final fallback to static image
+                try {
+                    console.log('🖼️ Final fallback: sending static image...');
+                    const ironmanImageBuffer = fs.readFileSync('./src/ironman.jpg');
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        image: ironmanImageBuffer,
+                        caption: invalidCommandMessage,
+                        mimetype: 'image/jpeg'
+                    });
+                    console.log('✅ Invalid command response sent as static image fallback');
+                } catch (finalError) {
+                    console.error('🚨 All fallback methods failed:', finalError.message);
+                    // Ultimate fallback - text only
+                    await sock.sendMessage(msg.key.remoteJid, { text: invalidCommandMessage });
+                    console.log('✅ Invalid command response sent as text-only (ultimate fallback)');
+                }
+            }
         }
     });
 
