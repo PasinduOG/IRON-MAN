@@ -1,4 +1,20 @@
-# Iron Man WhatsApp Bot v1.2.0 🤖
+# IRON-MAN WhatsApp Bot v1.2.1 🤖
+
+A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sticker creation, MongoDB session persistence, and beautiful web interface.
+
+## ✨ Features
+
+- 🤖 **Smart Greetings** - Responds to hi, hello, hey with Jarvis welcome message
+- ❓ **Help System** - Interactive help center with IRON-MAN themed responses
+- 🎬 **Animated Sticker Creator** - Convert videos/GIFs to animated WebP stickers with `!asticker` command
+- 👨‍💻 **Developer Info** - Smart developer information with image preview and infinite loop prevention
+- 🗄️ **MongoDB Storage** - Persistent session storage using MongoDB Atlas
+- 🌐 **Web QR Interface** - Beautiful HTML page for easy QR code scanning
+- 🔄 **Auto Reconnection** - Automatic reconnection on disconnect
+- 📱 **Mobile Responsive** - Works perfectly on all devices
+- ☁️ **Heroku Ready** - One-click deployment with persistent sessions
+- 🎨 **IRON-MAN Theme** - Styled with IRON-MAN colors and design
+- 🛡️ **Anti-Loop Protection** - Enhanced filtering to prevent infinite message loopssApp Bot v1.2.1 🤖
 
 A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sticker creation, MongoDB session persistence, and beautiful web interface.
 
@@ -21,13 +37,20 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 - **`jarvis`** - Get formal Jarvis greeting "At your service, sir"
 
 ### Help Commands
-- **`!help`** - Get bot help center with Iron Man image and info
+- **`!help`** - Get bot help center with IRON-MAN image and info
 - **`!commands`** - Show all available commands list
 
 ### Developer Info Commands
 - **`"who is pasindu"`** - Get detailed developer information with image preview
 - **`"about og"`** - Learn about the developer's background and projects
 - **`"tell me about pasindu"`** - Developer skills, projects, and contact info
+
+**Features:**
+- 🖼️ **GitHub Avatar Integration** - Downloads developer image from GitHub profile
+- 🔄 **Fallback Image Support** - Uses local IRON-MAN image if GitHub fails
+- 🛡️ **Anti-Loop Protection** - Enhanced filtering prevents infinite responses
+- 📊 **Comprehensive Profile** - Skills, projects, achievements, and contact details
+- ⚡ **Smart Detection** - Responds to natural language queries about the developer
 
 ### Sticker Commands
 - **`!sticker`** (as image caption) - Convert uploaded image to sticker
@@ -114,8 +137,8 @@ Video/GIF Input → Download → FFmpeg Processing → Size Check → Ultra-Comp
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
-   cd iron-man-bot
+   git clone https://github.com/PasinduOG/IRON-MAN.git
+   cd IRON-MAN
    ```
 
 2. **Install dependencies:**
@@ -142,7 +165,7 @@ Video/GIF Input → Download → FFmpeg Processing → Size Check → Ultra-Comp
 
 ## 🌐 Web Interface Features
 
-- **🎨 Beautiful Design** - Iron Man themed responsive interface
+- **🎨 Beautiful Design** - IRON-MAN themed responsive interface
 - **📱 QR Code Display** - Large, scannable QR codes
 - **🔄 Auto Refresh** - Automatic QR code renewal every 30 seconds
 - **📊 Status Indicators** - Real-time connection status
@@ -167,7 +190,7 @@ Video/GIF Input → Download → FFmpeg Processing → Size Check → Ultra-Comp
 
 ### Database Structure:
 ```javascript
-whatsapp_bot.auth_state
+iron_man_bot.auth_state
 ├── creds              // Main WhatsApp credentials
 ├── pre-key-*          // Encryption pre-keys
 ├── session-*          // Active session data
@@ -189,7 +212,7 @@ whatsapp_bot.auth_state
 
 2. **Create a new Heroku app:**
    ```bash
-   heroku create iron-man-bot
+   heroku create iron-man
    ```
 
 3. **Set up Git (if not already done):**
@@ -240,10 +263,18 @@ whatsapp_bot.auth_state
   "sharp": "^0.32.6",                    // Image processing for stickers
   "ffmpeg-static": "^5.2.0",             // FFmpeg binary for video processing
   "fluent-ffmpeg": "^2.1.3",             // FFmpeg wrapper for animated stickers
-  "axios": "^1.10.0",                    // HTTP client
+  "axios": "^1.10.0",                    // HTTP client for GitHub avatar downloads
   "nodemon": "^3.1.10"                   // Development auto-restart
 }
 ```
+
+## 📋 Project Information
+
+- **Project Name**: IRON-MAN
+- **Repository Name**: IRON-MAN  
+- **Package Name**: iron-man (follows npm naming conventions)
+- **Display Name**: IRON-MAN Bot
+- **Version**: 1.2.1
 
 ## 🔧 Environment Variables
 
@@ -297,7 +328,7 @@ User: "Jarvis"
 Bot: "At your service, sir"
 
 User: "!help"
-Bot: [Iron Man image with help center info and available commands]
+Bot: [IRON-MAN image with help center info and available commands]
 
 User: "!commands"
 Bot: "📝 Available Commands:
@@ -331,6 +362,9 @@ Bot: [sends developer image with detailed bio including background, skills, proj
 User: "about og"  
 Bot: [sends developer information with image preview]
 
+User: [bot's own developer info message appears in chat]
+Bot: [logs "🚫 Ignoring bot's own developer info message" and doesn't respond - INFINITE LOOP PREVENTED]
+
 User: [sends video without caption]
 Bot: "🎬 Sir I see you sent a video/GIF! Send '!asticker' to convert it to an animated sticker."
 ```
@@ -339,7 +373,7 @@ Bot: "🎬 Sir I see you sent a video/GIF! Send '!asticker' to convert it to an 
 - **🎭 Dual Greetings** - Casual (hi/hello/hey) and formal (jarvis) responses
 - **🤵 Respectful Tone** - Addresses users as "Sir" in formal interactions
 - **🎯 Context Aware** - Different responses for different situations
-- **🤖 Character Consistency** - Maintains Iron Man's Jarvis personality
+- **🤖 Character Consistency** - Maintains IRON-MAN's Jarvis personality
 
 ## 🐛 Troubleshooting
 
@@ -362,6 +396,12 @@ Bot: "🎬 Sir I see you sent a video/GIF! Send '!asticker' to convert it to an 
 - ✅ Processing takes 10-30 seconds depending on video size
 - ✅ Bot shows file size info during processing
 
+**Developer Info Issues:**
+- ✅ Enhanced anti-loop protection prevents infinite responses
+- ✅ GitHub avatar downloads automatically with local fallback
+- ✅ Message length filtering prevents self-triggering
+- ✅ Multiple keyword detection for comprehensive filtering
+
 **Connection Issues:**
 - ✅ Bot auto-reconnects every 3 seconds on disconnect
 - ✅ Check Heroku logs: `heroku logs --tail`
@@ -372,6 +412,12 @@ Bot: "🎬 Sir I see you sent a video/GIF! Send '!asticker' to convert it to an 
 - ✅ **Without MongoDB**: Expected behavior - re-scan QR after restarts
 - ✅ For production: Always use MongoDB for session persistence
 - ✅ Check MongoDB connection in logs: Look for "Connected to MongoDB"
+
+**Infinite Loop Issues (FIXED):**
+- ✅ Enhanced message filtering prevents bot responding to its own messages
+- ✅ Multi-layered checks for developer info responses
+- ✅ Message length filtering (>100 chars = likely bot response)
+- ✅ Keyword-based filtering for all bot-generated content
 
 ### Debug Commands
 
@@ -400,18 +446,36 @@ heroku config
 - **Response Time:** < 1 second for text commands
 - **Sticker Processing:** 2-5 seconds depending on image size
 - **Animated Sticker Processing:** 10-30 seconds depending on video size and compression
+- **Developer Info:** < 3 seconds with GitHub image download
 - **QR Generation:** Instant with auto-refresh
 - **MongoDB Connection:** < 2 seconds on startup
 - **Session Loading:** Instant with MongoDB persistence
 - **Memory Usage:** ~150MB on Heroku (with MongoDB and FFmpeg)
 - **Uptime:** 99.9% with auto-reconnection and session persistence
 - **Compression Efficiency:** 60-80% size reduction for animated stickers
+- **Anti-Loop Protection:** 100% effective infinite loop prevention
+
+## 🆕 Recent Updates (v1.2.1)
+
+### Bug Fixes:
+- 🛡️ **Fixed Infinite Loop Issue** - Enhanced developer info filtering prevents bot responding to its own messages
+- 🔍 **Improved Message Detection** - Multi-layered checks for bot-generated content
+- ⚡ **Smart Length Filtering** - Messages >100 characters automatically filtered as bot responses
+- 🎯 **Keyword-Based Prevention** - Comprehensive keyword detection for all bot content types
+
+### Enhancements:
+- 📊 **Better Error Logging** - Enhanced console logging for debugging
+- 🛡️ **Robust Self-Detection** - Multiple fallback mechanisms to prevent self-triggering
+- 🔄 **Improved Stability** - More reliable message processing with enhanced filtering
+- 📝 **Updated Documentation** - Comprehensive troubleshooting guide for infinite loop issues
 
 ## 🔮 Future Features
 
 - [x] 🗄️ MongoDB session persistence ✅ **IMPLEMENTED**
 - [x] 🎬 Animated sticker creation ✅ **IMPLEMENTED**
 - [x] 📏 Smart video compression ✅ **IMPLEMENTED**
+- [x] 👨‍💻 Developer info with image preview ✅ **IMPLEMENTED**
+- [x] 🛡️ Anti-loop protection system ✅ **IMPLEMENTED**
 - [ ] 🎵 Audio message responses
 - [ ] 🌍 Multi-language support
 - [ ] 📊 Analytics dashboard

@@ -114,7 +114,7 @@ Available Commands:
 - Ask "who is pasindu" to learn about the developer
 
 ⚙️ Bot created by *Pasindu OG Dev*
-📌 Version: 1.1.0`
+📌 Version: 1.2.1`
             });
         }
 
@@ -172,7 +172,7 @@ Use them in chat to try them out! 👌` })
                         responseType: 'arraybuffer',
                         timeout: 10000, // 10 second timeout
                         headers: {
-                            'User-Agent': 'Iron-Man-Bot/1.2.0'
+                            'User-Agent': 'IRON-MAN-Bot/1.2.1'
                         }
                     });
                     developerImageBuffer = Buffer.from(response.data);
@@ -525,7 +525,7 @@ app.get('/', async (req, res) => {
                 <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Iron Man Bot - WhatsApp QR Code</title>
+                    <title>IRON-MAN Bot - WhatsApp QR Code</title>
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
                     <style>
                         body {
@@ -620,7 +620,7 @@ app.get('/', async (req, res) => {
                 <body>
                     <div class="container">
                         <div class="logo">🤖</div>
-                        <h1>Iron Man Bot</h1>
+                        <h1>IRON-MAN Bot</h1>
                         <p class="subtitle">Scan QR Code to Connect WhatsApp</p>
                         
                         <div class="qr-container">
@@ -648,7 +648,7 @@ app.get('/', async (req, res) => {
             `);
         } catch (error) {
             res.send(`
-                <h1>🤖 Iron Man Bot</h1>
+                <h1>🤖 IRON-MAN Bot</h1>
                 <p>Generating QR Code...</p>
                 <script>setTimeout(() => window.location.reload(), 3000);</script>
             `);
@@ -658,7 +658,7 @@ app.get('/', async (req, res) => {
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Iron Man Bot - Connected</title>
+                <title>IRON-MAN Bot - Connected</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <style>
                     body {
@@ -695,7 +695,7 @@ app.get('/', async (req, res) => {
             <body>
                 <div class="container">
                     <div class="success-icon">✅</div>
-                    <h1>Iron Man Bot Connected!</h1>
+                    <h1>IRON-MAN Bot Connected!</h1>
                     <p>Your WhatsApp bot is now online and ready to receive messages.</p>
                     <p><strong>Available Commands:</strong></p>
                     <div style="text-align: left; background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0;">
@@ -720,7 +720,7 @@ app.get('/', async (req, res) => {
             <!DOCTYPE html>
             <html>
             <head>
-                <title>Iron Man Bot - Starting</title>
+                <title>IRON-MAN Bot - Starting</title>
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <style>
                     body {
@@ -761,7 +761,7 @@ app.get('/', async (req, res) => {
             <body>
                 <div class="container">
                     <div class="loading">🤖</div>
-                    <h1>Iron Man Bot Starting...</h1>
+                    <h1>IRON-MAN Bot Starting...</h1>
                     <p>Please wait while the bot initializes.</p>
                     <p>QR Code will appear shortly.</p>
                 </div>
