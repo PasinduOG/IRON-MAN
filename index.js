@@ -1,4 +1,5 @@
 const { useMultiFileAuthState, default: makeWASocket, DisconnectReason, fetchLatestBaileysVersion, downloadContentFromMessage } = require("@whiskeysockets/baileys");
+const { useMongoDBAuthState } = require('./mongoAuth');
 const qrcode = require('qrcode-terminal');
 const QRCode = require('qrcode');
 const Pino = require('pino');
@@ -6,6 +7,9 @@ const fs = require('fs');
 const sharp = require('sharp');
 
 const welcomeMessage = "Hello!... I'm Jarvis. How can I assist you?...😊";
+
+// MongoDB Configuration
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://pasinduogdev:PasinduDev678@cluster0.4ns3c.mongodb.net/iron-man-bot';
 
 // For Heroku deployment - Please don't edit this code (Use .env instead)
 const PORT = process.env.PORT || 3000;
@@ -15,7 +19,7 @@ let currentQR = null;
 let isConnected = false;
 
 async function startBot() {
-    const { state, saveCreds } = await useMultiFileAuthState('auth');
+    const { state, saveCreds } = await useMongoDBAuthState(MONGODB_URI);
     const { version } = await fetchLatestBaileysVersion();
     const sock = makeWASocket({
         version,
@@ -338,6 +342,11 @@ app.get('/', async (req, res) => {
                     <h1>Iron Man Bot Connected!</h1>
                     <p>Your WhatsApp bot is now online and ready to receive messages.</p>
                     <p><strong>Try sending:</strong> "Hi", "Hello", or "Hey" to your bot!</p>
+                    <p><strong>Sticker creation:</strong> Send an image with caption "!sticker"</p>
+                    <div style="margin-top: 20px; padding: 15px; background: #e8f5e8; border-radius: 10px; border-left: 4px solid #4CAF50;">
+                        <p style="margin: 0; color: #2e7d32; font-weight: bold;">🗄️ Session Persistence</p>
+                        <p style="margin: 5px 0 0 0; color: #388e3c; font-size: 0.9em;">Your session is safely stored in MongoDB and will persist across deployments!</p>
+                    </div>
                 </div>
             </body>
             </html>

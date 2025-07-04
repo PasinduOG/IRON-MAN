@@ -30,10 +30,11 @@ logs
 ehthumbs.db
 Thumbs.db
 
-# Auth files (WhatsApp session)
+# Auth files (WhatsApp session) - Now stored in MongoDB
 auth/
 session.json
 baileys_store.json
+mongoAuth.json
 
 # IDE
 .vscode/
