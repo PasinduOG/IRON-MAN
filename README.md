@@ -1,4 +1,4 @@
-# Iron Man WhatsApp Bot v1.1.0 🤖
+# Iron Man WhatsApp Bot v1.2.0 🤖
 
 A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sticker creation, MongoDB session persistence, and beautiful web interface.
 
@@ -6,7 +6,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 
 - 🤖 **Smart Greetings** - Responds to hi, hello, hey with Jarvis welcome message
 - ❓ **Help System** - Interactive help center with Iron Man themed responses
-- 🎯 **Sticker Creator** - Convert any image to WhatsApp sticker with `!sticker` command
+- � **Animated Sticker Creator** - Convert videos/GIFs to animated WebP stickers with `!asticker` command
 - 🗄️ **MongoDB Storage** - Persistent session storage using MongoDB Atlas
 - 🌐 **Web QR Interface** - Beautiful HTML page for easy QR code scanning
 - 🔄 **Auto Reconnection** - Automatic reconnection on disconnect
@@ -24,9 +24,16 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 - **`!help`** - Get bot help center with Iron Man image and info
 - **`!commands`** - Show all available commands list
 
+### Developer Info Commands
+- **`"who is pasindu"`** - Get detailed developer information with image preview
+- **`"about og"`** - Learn about the developer's background and projects
+- **`"tell me about pasindu"`** - Developer skills, projects, and contact info
+
 ### Sticker Commands
 - **`!sticker`** (as image caption) - Convert uploaded image to sticker
 - **`!sticker`** (reply to image) - Convert replied image to sticker
+- **`!asticker`** (as video/GIF caption) - Convert uploaded video/GIF to animated sticker
+- **`!asticker`** (reply to video/GIF) - Convert replied video/GIF to animated sticker
 
 ## 📸 Sticker Creation Usage
 
@@ -44,6 +51,64 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 1. Send any image without caption
 2. Bot suggests using `!sticker`
 3. Follow the suggestion
+
+## 🎬 Animated Sticker Creation Usage
+
+### Method 1: Video/GIF with Caption
+1. Select/record a video or GIF
+2. Add caption: `!asticker`
+3. Send → Bot converts to animated WebP sticker
+
+### Method 2: Reply to Video/GIF
+1. Find any video or GIF in chat
+2. Reply with: `!asticker`
+3. Bot converts original video/GIF to animated sticker
+
+### Method 3: Auto-Suggestion
+1. Send any video/GIF without caption
+2. Bot suggests using `!asticker`
+3. Follow the suggestion
+
+### Features:
+- **🎯 Smart Processing** - Automatically optimizes video for WhatsApp compatibility
+- **📏 Size Optimization** - Resizes to 512x512 maintaining aspect ratio
+- **⏱️ Duration Limit** - Clips videos to 6 seconds (4 seconds for ultra-compression)
+- **🔇 Audio Removal** - Removes audio for smaller file size
+- **🔄 Format Support** - Works with MP4, GIF, WebM, and other video formats
+- **📊 Intelligent Compression** - Dual-stage compression for optimal file sizes
+- **⚡ Frame Rate Optimization** - Reduces to 15 FPS (10 FPS for ultra-compression)
+- **🗜️ Advanced Encoding** - Uses WebP with quality 50% (30% for ultra-compression)
+- **📏 Size Monitoring** - Automatic file size checking (500KB WhatsApp limit)
+- **🎛️ Fallback Processing** - Ultra-compression mode for large videos
+
+## 🎯 Animated Sticker Technology
+
+### Compression Stages:
+1. **Standard Compression** (Default):
+   - Duration: 6 seconds max
+   - Resolution: 512x512px
+   - Frame Rate: 15 FPS
+   - Quality: 50%
+   - Target Size: <500KB
+
+2. **Ultra Compression** (Auto-triggered if needed):
+   - Duration: 4 seconds max
+   - Resolution: 320x320px
+   - Frame Rate: 10 FPS
+   - Quality: 30%
+   - Target Size: <300KB
+
+### Processing Pipeline:
+```
+Video/GIF Input → Download → FFmpeg Processing → Size Check → Ultra-Compress (if needed) → WhatsApp Sticker
+```
+
+### FFmpeg Optimization:
+- **Video Codec**: libwebp (WebP format)
+- **Compression Level**: 6 (highest)
+- **Method**: 6 (best quality/compression ratio)
+- **Audio**: Removed for smaller files
+- **Padding**: Smart aspect ratio preservation
 
 ## 💻 Local Development
 
@@ -173,7 +238,10 @@ whatsapp_bot.auth_state
   "qrcode": "^1.5.3",                    // QR code generation for web
   "qrcode-terminal": "^0.12.0",          // Terminal QR display
   "sharp": "^0.32.6",                    // Image processing for stickers
-  "axios": "^1.10.0"                     // HTTP client
+  "ffmpeg-static": "^5.2.0",             // FFmpeg binary for video processing
+  "fluent-ffmpeg": "^2.1.3",             // FFmpeg wrapper for animated stickers
+  "axios": "^1.10.0",                    // HTTP client
+  "nodemon": "^3.1.10"                   // Development auto-restart
 }
 ```
 
@@ -244,6 +312,27 @@ Bot: [sends back image as sticker]
 
 User: [sends image without caption]  
 Bot: "📸 Sir I see you sent an image! Send '!sticker' to convert it to a sticker."
+
+User: [sends video/GIF with caption "!asticker"]
+Bot: "🎬 Sir, converting your video/GIF to animated sticker... This may take a moment."
+Bot: "📏 Generated sticker size: 245.67 KB"
+Bot: [sends back video as optimized animated WebP sticker]
+
+User: [sends large video with caption "!asticker"]
+Bot: "🎬 Sir, converting your video/GIF to animated sticker... This may take a moment."
+Bot: "📏 Generated sticker size: 612.34 KB"
+Bot: "⚠️ File too large, attempting to compress further..."
+Bot: "📏 Compressed sticker size: 387.12 KB"
+Bot: [sends back ultra-compressed animated sticker]
+
+User: "who is pasindu"
+Bot: [sends developer image with detailed bio including background, skills, projects, and contact info]
+
+User: "about og"  
+Bot: [sends developer information with image preview]
+
+User: [sends video without caption]
+Bot: "🎬 Sir I see you sent a video/GIF! Send '!asticker' to convert it to an animated sticker."
 ```
 
 ### Jarvis Personality Features
@@ -265,6 +354,13 @@ Bot: "📸 Sir I see you sent an image! Send '!sticker' to convert it to a stick
 - ✅ Ensure image is valid (JPG, PNG, WebP)
 - ✅ Try with different image sizes
 - ✅ Check if image caption is exactly `!sticker`
+
+**Animated Sticker Issues:**
+- ✅ Ensure video/GIF is valid (MP4, GIF, WebM, MOV)
+- ✅ Large videos auto-compress to fit WhatsApp limits
+- ✅ Check if video caption is exactly `!asticker`
+- ✅ Processing takes 10-30 seconds depending on video size
+- ✅ Bot shows file size info during processing
 
 **Connection Issues:**
 - ✅ Bot auto-reconnects every 3 seconds on disconnect
@@ -303,18 +399,22 @@ heroku config
 
 - **Response Time:** < 1 second for text commands
 - **Sticker Processing:** 2-5 seconds depending on image size
+- **Animated Sticker Processing:** 10-30 seconds depending on video size and compression
 - **QR Generation:** Instant with auto-refresh
 - **MongoDB Connection:** < 2 seconds on startup
 - **Session Loading:** Instant with MongoDB persistence
-- **Memory Usage:** ~120MB on Heroku (with MongoDB)
+- **Memory Usage:** ~150MB on Heroku (with MongoDB and FFmpeg)
 - **Uptime:** 99.9% with auto-reconnection and session persistence
+- **Compression Efficiency:** 60-80% size reduction for animated stickers
 
 ## 🔮 Future Features
 
 - [x] 🗄️ MongoDB session persistence ✅ **IMPLEMENTED**
+- [x] 🎬 Animated sticker creation ✅ **IMPLEMENTED**
+- [x] 📏 Smart video compression ✅ **IMPLEMENTED**
 - [ ] 🎵 Audio message responses
 - [ ] 🌍 Multi-language support
-- [ ]  Analytics dashboard
+- [ ] 📊 Analytics dashboard
 - [ ] 🔒 Admin commands
 - [ ] 🎮 Interactive games
 - [ ] 🤖 AI-powered responses
