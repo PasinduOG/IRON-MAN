@@ -80,6 +80,33 @@ async function startBot() {
             sock.sendMessage(msg.key.remoteJid, { text: welcomeMessage });
         }
 
+        if (messageText === '!help') {
+            const imageBuffer = fs.readFileSync('./src/ironman.jpg') // your image path
+
+            await sock.sendMessage(msg.key.remoteJid, {
+                image: imageBuffer,
+                caption: `🤖 *IronMan Bot Help Center*
+
+Available Commands:
+- *!commands* : List all commands
+- *!sticker* : Convert image/video to sticker
+
+⚙️ Bot created by *Pasindu OG Dev*
+📌 Version: 1.1.0`
+            });
+        }
+
+        if (messageText === '!commands') {
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: `📝 Available Commands:
+- !commands : Show all commands
+- !help : Get help info
+- !sticker : Convert image/video to sticker
+
+Use them in chat to try them out! 👌` })
+        }
+
+
         // Sticker creation command
         if (messageText.startsWith('!sticker') || messageText === '!sticker') {
             try {
@@ -341,8 +368,13 @@ app.get('/', async (req, res) => {
                     <div class="success-icon">✅</div>
                     <h1>Iron Man Bot Connected!</h1>
                     <p>Your WhatsApp bot is now online and ready to receive messages.</p>
-                    <p><strong>Try sending:</strong> "Hi", "Hello", or "Hey" to your bot!</p>
-                    <p><strong>Sticker creation:</strong> Send an image with caption "!sticker"</p>
+                    <p><strong>Available Commands:</strong></p>
+                    <div style="text-align: left; background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0;">
+                        <p style="margin: 5px 0;">💬 <strong>hi, hello, hey</strong> - Jarvis greeting</p>
+                        <p style="margin: 5px 0;">❓ <strong>!help</strong> - Bot help center</p>
+                        <p style="margin: 5px 0;">📋 <strong>!commands</strong> - Command list</p>
+                        <p style="margin: 5px 0;">🎯 <strong>!sticker</strong> - Convert image to sticker</p>
+                    </div>
                     <div style="margin-top: 20px; padding: 15px; background: #e8f5e8; border-radius: 10px; border-left: 4px solid #4CAF50;">
                         <p style="margin: 0; color: #2e7d32; font-weight: bold;">🗄️ Session Persistence</p>
                         <p style="margin: 5px 0 0 0; color: #388e3c; font-size: 0.9em;">Your session is safely stored in MongoDB and will persist across deployments!</p>
