@@ -110,9 +110,6 @@ async function startBot() {
                 - *!sticker* : Convert image to sticker
                 - *!asticker* : Convert video/GIF to animated sticker
 
-                🔍 Developer Info:
-                - Ask "who is pasindu" to learn about the developer
-
                 ⚙️ Bot created by *Pasindu OG Dev*
                 📌 Version: 1.2.1`
             });
@@ -122,15 +119,11 @@ async function startBot() {
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `📝 Available Commands:
                 - hi, hello, hey : Casual Jarvis greeting
-                - jarvis : Formal greeting  
+                - jarvis : Formal greeting
                 - !commands : Show all commands
                 - !help : Get help info
                 - !sticker : Convert image to sticker
-                - !asticker : Convert video/GIF to animated sticker
-
-                🔍 Developer Info:
-                - "who is pasindu" : Learn about the developer
-                - "about og" : Developer background & projects
+                - !asticker : Convert video/GIF to animated sticker\
 
                 Use them in chat to try them out! 👌` })
         }
@@ -423,14 +416,7 @@ async function startBot() {
                 
                 const invalidCommandMessage = `❌ *Invalid Command: "${messageText}"*\n\n` +
                     `🤖 Sir, that command is not recognized in my database.\n\n` +
-                    `📝 *Available Commands:*\n` +
-                    `• !help - Get help center\n` +
-                    `• !commands - Show all commands\n` +
-                    `• !sticker - Convert image to sticker\n` +
-                    `• !asticker - Convert video/GIF to animated sticker\n\n` +
-                    `🔍 *Developer Info:*\n` +
-                    `• "who is pasindu" - Learn about the developer\n\n` +
-                    `💡 *Tip:* Use !help for detailed information about each command.\n\n` +
+                    `📝 Type *!commands* to show all commands\n` +
                     `⚙️ *IRON-MAN Bot v1.2.1*`;
 
                 // Try multiple methods to send the video as GIF-like preview
