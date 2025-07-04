@@ -18,6 +18,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 
 ### Greeting Commands
 - **`hi`**, **`hello`**, **`hey`** - Get Jarvis welcome message
+- **`jarvis`** - Get formal Jarvis greeting "At your service, sir"
 
 ### Help Commands
 - **`!help`** - Get bot help center with Iron Man image and info
@@ -222,7 +223,10 @@ PORT=3000
 ### Bot Responses
 ```
 User: "Hi"
-Bot: "Hello!... I'm Jarvis. How can I assist you?...😊"
+Bot: "Hello!... I'm Jarvis. How can I assist you today?...😊"
+
+User: "Jarvis"
+Bot: "At your service, sir"
 
 User: "!help"
 Bot: [Iron Man image with help center info and available commands]
@@ -239,14 +243,14 @@ User: [sends image with caption "!sticker"]
 Bot: [sends back image as sticker]
 
 User: [sends image without caption]  
-Bot: "📸 I see you sent an image! Send '!sticker' to convert it to a sticker."
+Bot: "📸 Sir I see you sent an image! Send '!sticker' to convert it to a sticker."
 ```
 
-### Help System Features
-- **🖼️ Visual Help** - Iron Man themed help with image
-- **📋 Command List** - Complete list of available commands
-- **👤 Bot Info** - Creator credits and version information
-- **🎯 Interactive** - Try commands directly from help message
+### Jarvis Personality Features
+- **🎭 Dual Greetings** - Casual (hi/hello/hey) and formal (jarvis) responses
+- **🤵 Respectful Tone** - Addresses users as "Sir" in formal interactions
+- **🎯 Context Aware** - Different responses for different situations
+- **🤖 Character Consistency** - Maintains Iron Man's Jarvis personality
 
 ## 🐛 Troubleshooting
 

@@ -6,7 +6,8 @@ const Pino = require('pino');
 const fs = require('fs');
 const sharp = require('sharp');
 
-const welcomeMessage = "Hello!... I'm Jarvis. How can I assist you?...😊";
+const welcomeMessage = "Hello!... I'm Jarvis. How can I assist you today?...😊";
+const greetingMessge = "At your service, sir";
 
 // MongoDB Configuration
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://pasinduogdev:PasinduDev678@cluster0.4ns3c.mongodb.net/iron-man-bot';
@@ -74,10 +75,15 @@ async function startBot() {
             msg.message?.imageMessage?.caption ||
             '';
 
-        const greetingRegex = /^(hi|hello|hey)(\s|$)/i;
+        const welcomeRegex = /^(hi|hello|hey)(\s|$)/i;
+        const greetingRegex = /^(jarvis)(\s|$)/i;
+
+        if (welcomeRegex.test(messageText)) {
+            sock.sendMessage(msg.key.remoteJid, { text: welcomeMessage });
+        }
 
         if (greetingRegex.test(messageText)) {
-            sock.sendMessage(msg.key.remoteJid, { text: welcomeMessage });
+            sock.sendMessage(msg.key.remoteJid, { text: greetingMessge });
         }
 
         if (messageText === '!help') {
@@ -85,7 +91,7 @@ async function startBot() {
 
             await sock.sendMessage(msg.key.remoteJid, {
                 image: imageBuffer,
-                caption: `🤖 *IronMan Bot Help Center*
+                caption: `🤖 *IRON-MAN Bot Help Center*
 
 Available Commands:
 - *!commands* : List all commands
@@ -99,6 +105,8 @@ Available Commands:
         if (messageText === '!commands') {
             await sock.sendMessage(msg.key.remoteJid, {
                 text: `📝 Available Commands:
+- hi, hello, hey : Casual Jarvis greeting
+- jarvis : Formal greeting  
 - !commands : Show all commands
 - !help : Get help info
 - !sticker : Convert image/video to sticker
@@ -140,7 +148,7 @@ Use them in chat to try them out! 👌` })
 
                 } else {
                     await sock.sendMessage(msg.key.remoteJid, {
-                        text: '❗ Please send an image with !sticker caption or reply to an image with !sticker\n\n📝 Usage:\n• Send image with caption: !sticker\n• Reply to image with: !sticker'
+                        text: '❗ Sir. Please send an image with !sticker caption or reply to an image with !sticker\n\n📝 Usage:\n• Send image with caption: !sticker\n• Reply to image with: !sticker'
                     });
                 }
             } catch (error) {
@@ -154,7 +162,7 @@ Use them in chat to try them out! 👌` })
         // Alternative: Just detect any image and provide sticker option
         else if (msg.message?.imageMessage && !messageText) {
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '📸 I see you sent an image! Send "!sticker" to convert it to a sticker.'
+                text: '📸 Sir I see you sent an image! Send "!sticker" to convert it to a sticker.'
             });
         }
     });
@@ -371,6 +379,7 @@ app.get('/', async (req, res) => {
                     <p><strong>Available Commands:</strong></p>
                     <div style="text-align: left; background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0;">
                         <p style="margin: 5px 0;">💬 <strong>hi, hello, hey</strong> - Jarvis greeting</p>
+                        <p style="margin: 5px 0;">🤵 <strong>jarvis</strong> - Formal greeting</p>
                         <p style="margin: 5px 0;">❓ <strong>!help</strong> - Bot help center</p>
                         <p style="margin: 5px 0;">📋 <strong>!commands</strong> - Command list</p>
                         <p style="margin: 5px 0;">🎯 <strong>!sticker</strong> - Convert image to sticker</p>
