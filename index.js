@@ -76,7 +76,7 @@ async function startBot() {
             '';
 
         const welcomeRegex = /^(hi|hello|hey)(\s|$)/i;
-        const greetingRegex = /^(jarvis)(\s|$)/i;
+        const greetingRegex = /jarvis/i;
 
         if (welcomeRegex.test(messageText)) {
             sock.sendMessage(msg.key.remoteJid, { text: welcomeMessage });
