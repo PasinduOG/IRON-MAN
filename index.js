@@ -110,9 +110,6 @@ Available Commands:
 - *!sticker* : Convert image to sticker
 - *!asticker* : Convert video/GIF to animated sticker
 
-🔍 Developer Info:
-- Ask "who is pasindu" to learn about the developer
-
 ⚙️ Bot created by *Pasindu OG Dev*
 📌 Version: 1.2.1`
             });
@@ -127,10 +124,6 @@ Available Commands:
 - !help : Get help info
 - !sticker : Convert image to sticker
 - !asticker : Convert video/GIF to animated sticker
-
-🔍 Developer Info:
-- "who is pasindu" : Learn about the developer
-- "about og" : Developer background & projects
 
 Use them in chat to try them out! 👌` })
         }
