@@ -6,7 +6,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 
 - 🤖 **Smart Greetings** - Responds to hi, hello, hey with Jarvis welcome message
 - ❓ **Help System** - Interactive help center with IRON-MAN themed responses
-- 🎬 **Animated Sticker Creator** - Convert videos/GIFs to animated WebP stickers with configurable duration limits
+- 🎬 **Animated Sticker Creator** - Convert videos/GIFs to animated WebP stickers with original dimensions and transparency preservation
 - 👨‍💻 **Developer Info** - Smart developer information with image preview and infinite loop prevention
 - ❌ **Invalid Command Handler** - Video GIF preview response for unrecognized commands with helpful suggestions
 - 🗄️ **MongoDB Storage** - Persistent session storage using MongoDB Atlas
@@ -95,15 +95,16 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 
 ### Features:
 - **🎯 Smart Processing** - Automatically optimizes video for WhatsApp compatibility
-- **📏 Size Optimization** - Resizes to 512x512 maintaining aspect ratio
+- **� Original Dimensions** - Preserves video/GIF original width and height (no forced scaling)
+- **🔳 Transparency Preservation** - Maintains transparent backgrounds, removes white padding
 - **⏱️ Configurable Duration** - Customizable max animation length (default: 10 seconds)
 - **🔇 Audio Removal** - Removes audio for smaller file size
 - **🔄 Format Support** - Works with MP4, GIF, WebM, and other video formats
 - **📊 Intelligent Compression** - Dual-stage compression for optimal file sizes
-- **⚡ Frame Rate Optimization** - Reduces to 15 FPS (10 FPS for ultra-compression)
-- **🗜️ Advanced Encoding** - Uses WebP with quality 50% (30% for ultra-compression)
+- **⚡ Frame Rate Optimization** - Optimized FPS (15 FPS standard, 12 FPS compressed)
+- **🗜️ Advanced Encoding** - Uses WebP with enhanced quality settings
 - **📏 Size Monitoring** - Automatic file size checking (500KB WhatsApp limit)
-- **🎛️ Fallback Processing** - Ultra-compression mode for large videos
+- **🎛️ Adaptive Processing** - Smart scaling only when absolutely necessary
 - **⚙️ Easy Configuration** - Simple constants for duration adjustment
 
 ## 🎯 Animated Sticker Technology
@@ -116,18 +117,20 @@ const MAX_STICKER_DURATION_COMPRESSED = 6; // Ultra-compression (adjustable)
 ```
 
 ### Compression Stages:
-1. **Standard Compression** (Default):
+1. **Standard Processing** (Default):
    - Duration: Configurable (default: 10 seconds)
-   - Resolution: 512x512px
+   - Resolution: **Original video dimensions preserved**
    - Frame Rate: 15 FPS
-   - Quality: 50%
+   - Quality: 60% (enhanced for original dimensions)
+   - Background: **Transparent, no padding**
    - Target Size: <500KB
 
 2. **Ultra Compression** (Auto-triggered if needed):
    - Duration: Configurable (default: 6 seconds)
-   - Resolution: 320x320px
-   - Frame Rate: 10 FPS
-   - Quality: 30%
+   - Resolution: **400x400 max with aspect ratio preservation**
+   - Frame Rate: 12 FPS
+   - Quality: 40% (balanced quality)
+   - Background: **Transparent, no padding**
    - Target Size: <300KB
 
 ### Processing Pipeline:
@@ -140,8 +143,17 @@ Video/GIF Input → Download → FFmpeg Processing → Size Check → Ultra-Comp
 - **Compression Level**: 6 (highest)
 - **Method**: 6 (best quality/compression ratio)
 - **Audio**: Removed for smaller files
-- **Padding**: Smart aspect ratio preservation
+- **Dimensions**: **Original video dimensions preserved**
+- **Background**: **Transparent, no white padding**
 - **Duration Control**: Configurable max length with user notification
+- **Aspect Ratio**: **Maintained without distortion**
+
+### Advanced Processing Features:
+- **🔳 Transparency Preservation**: No white backgrounds added, maintains original transparency
+- **📐 Original Dimensions**: Uses video's natural width/height instead of forced square format
+- **🎯 Smart Scaling**: Only scales down when absolutely necessary for file size
+- **🔄 Aspect Ratio Protection**: Never distorts or stretches the original content
+- **⚡ Enhanced Quality**: Higher quality settings since we're not forcing small dimensions
 
 ### Configuration Guide:
 To adjust animation duration limits, modify these constants in `index.js`:
@@ -150,12 +162,14 @@ const MAX_STICKER_DURATION = 10;           // Change to desired seconds
 const MAX_STICKER_DURATION_COMPRESSED = 6; // Change for compressed version
 ```
 
-**Benefits of Configurable Duration:**
+**Benefits of Enhanced Processing:**
 - ⚡ **Faster Processing** - Shorter durations = quicker conversion
 - 📱 **Better Compatibility** - Fits WhatsApp's size and performance limits
 - 🎯 **User Awareness** - Bot informs users about duration limits
 - 🔧 **Easy Adjustment** - Simple constants for quick changes
 - 📊 **Optimal Performance** - Balances quality and file size
+- 🔳 **Professional Quality** - No unwanted backgrounds or distortion
+- 📐 **Original Fidelity** - Preserves creator's intended dimensions and transparency
 
 ## 💻 Local Development
 
@@ -371,16 +385,19 @@ Bot: "📸 Sir I see you sent an image! Send '!sticker' to convert it to a stick
 User: [sends video/GIF with caption "!asticker"]
 Bot: "🎬 Sir, converting your video/GIF to animated sticker... This may take a moment.
 ⏱️ Maximum duration: 10 seconds"
-Bot: "📏 Generated sticker size: 245.67 KB"
-Bot: [sends back video as optimized animated WebP sticker]
+Bot: "� Using original video dimensions (no forced scaling)"
+Bot: "�📏 Generated sticker size: 245.67 KB"
+Bot: [sends back video as optimized animated WebP sticker with original dimensions and transparency]
 
 User: [sends large video with caption "!asticker"]
 Bot: "🎬 Sir, converting your video/GIF to animated sticker... This may take a moment.
 ⏱️ Maximum duration: 10 seconds"
-Bot: "📏 Generated sticker size: 612.34 KB"
+Bot: "� Using original video dimensions (no forced scaling)"
+Bot: "�📏 Generated sticker size: 612.34 KB"
 Bot: "⚠️ File too large, attempting to compress further..."
+Bot: "📐 Using moderate scaling (400x400 max) preserving aspect ratio"
 Bot: "📏 Compressed sticker size: 387.12 KB"
-Bot: [sends back ultra-compressed animated sticker with 6-second limit]
+Bot: [sends back ultra-compressed animated sticker with preserved aspect ratio and transparency]
 
 User: "who is pasindu"
 Bot: [sends developer image with detailed bio including background, skills, projects, and contact info]
@@ -425,7 +442,10 @@ Bot: [sends IRON-MAN GIF with invalid command message and helpful command sugges
 - ✅ Processing takes 10-30 seconds depending on video size
 - ✅ Bot shows file size info and duration limits during processing
 - ✅ Duration limits: 10 seconds standard, 6 seconds compressed (configurable)
+- ✅ **Original dimensions preserved** - no forced 512x512 scaling
+- ✅ **Transparent backgrounds maintained** - no white padding added
 - ✅ Modify `MAX_STICKER_DURATION` constants in code to adjust limits
+- ✅ Higher quality output due to dimension preservation
 
 **Developer Info Issues:**
 - ✅ Enhanced anti-loop protection prevents infinite responses
@@ -489,10 +509,14 @@ heroku config
 ## 🆕 Recent Updates (v1.2.1)
 
 ### New Features:
+- 📐 **Original Dimensions Preservation** - Animated stickers now use video's natural width/height
+- 🔳 **Transparency Preservation** - Removes white backgrounds and maintains original transparency
 - ⏱️ **Configurable Animation Duration** - Set custom maximum length for animated stickers
 - 📊 **Duration Notifications** - Users informed about animation length limits
 - 🎛️ **Easy Configuration** - Simple constants for quick duration adjustments
 - 🔧 **Enhanced Processing** - Better control over video conversion parameters
+- 📏 **Smart Scaling** - Only scales down when absolutely necessary for file size
+- 🎯 **Quality Improvements** - Higher quality settings for better visual fidelity
 
 ### Bug Fixes:
 - 🛡️ **Fixed Infinite Loop Issue** - Enhanced developer info filtering prevents bot responding to its own messages
@@ -507,6 +531,8 @@ heroku config
 - 🔄 **Improved Stability** - More reliable message processing with enhanced filtering
 - 📝 **Updated Documentation** - Comprehensive troubleshooting guide for infinite loop issues
 - 🎬 **Invalid Command GIF Response** - Added IRON-MAN GIF preview for unrecognized commands with helpful suggestions
+- 🔳 **Professional Sticker Quality** - No unwanted backgrounds or aspect ratio distortion
+- 📐 **Natural Proportions** - Maintains creator's intended video dimensions
 
 ## 🚫 Invalid Command Video Handler
 
@@ -544,6 +570,8 @@ Bot: [video preview with: "❌ Invalid Command: '!test123' - Sir, that command i
 - [x] 👨‍💻 Developer info with image preview ✅ **IMPLEMENTED**
 - [x] 🛡️ Anti-loop protection system ✅ **IMPLEMENTED**
 - [x] ⏱️ Configurable animation duration ✅ **IMPLEMENTED**
+- [x] 📐 Original dimensions preservation ✅ **IMPLEMENTED**
+- [x] 🔳 Transparency preservation ✅ **IMPLEMENTED**
 - [ ] 🎵 Audio message responses
 - [ ] 🌍 Multi-language support
 - [ ] 📊 Analytics dashboard
