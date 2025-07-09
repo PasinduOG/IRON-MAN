@@ -517,9 +517,9 @@ async function convertToAnimatedSticker(inputPath, outputPath, maxDuration = 6) 
                 '-ss', '0'  // Start from beginning
             ])
             .outputOptions([
-                '-vf', 'scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=white@0,fps=15', // Reduce FPS to 15
+                '-vf', 'fps=15', // Only reduce FPS, preserve original dimensions and transparency
                 '-c:v', 'libwebp',
-                '-quality', '50',        // Lower quality for smaller size
+                '-quality', '60',        // Better quality for original dimensions
                 '-preset', 'picture',    // Better compression preset
                 '-loop', '0',
                 '-compression_level', '6', // Higher compression
@@ -530,6 +530,7 @@ async function convertToAnimatedSticker(inputPath, outputPath, maxDuration = 6) 
             .on('start', (commandLine) => {
                 console.log('🎬 FFmpeg command: ' + commandLine);
                 console.log(`⏱️ Maximum duration set to: ${maxDuration} seconds`);
+                console.log('📐 Using original video dimensions (no forced scaling)');
             })
             .on('progress', (progress) => {
                 console.log('Processing: ' + Math.round(progress.percent) + '% done');
@@ -555,9 +556,9 @@ async function convertToAnimatedStickerUltraCompressed(inputPath, outputPath, ma
                 '-ss', '0'
             ])
             .outputOptions([
-                '-vf', 'scale=320:320:force_original_aspect_ratio=decrease,pad=320:320:(ow-iw)/2:(oh-ih)/2:color=white@0,fps=10', // Smaller size and lower FPS
+                '-vf', 'scale=400:400:force_original_aspect_ratio=decrease,fps=12', // Moderate scaling with original ratio
                 '-c:v', 'libwebp',
-                '-quality', '30',        // Much lower quality
+                '-quality', '40',        // Balanced quality
                 '-preset', 'picture',
                 '-loop', '0',
                 '-compression_level', '6',
@@ -568,6 +569,7 @@ async function convertToAnimatedStickerUltraCompressed(inputPath, outputPath, ma
             .on('start', (commandLine) => {
                 console.log('🎬 Ultra-compressed FFmpeg command: ' + commandLine);
                 console.log(`⏱️ Ultra-compressed duration set to: ${maxDuration} seconds`);
+                console.log('📐 Using moderate scaling (400x400 max) preserving aspect ratio');
             })
             .on('end', () => {
                 console.log('✅ Ultra-compressed animated sticker conversion completed');
