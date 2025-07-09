@@ -111,11 +111,10 @@ async function startBot() {
 
 Available Commands:
 - *!commands* : List all commands
-- *!sticker* : Convert image to sticker
-- *!asticker* : Convert video/GIF to animated sticker
+- *!sticker* : Convert image/video/GIF to sticker
 
 ⚙️ Bot created by *Pasindu OG Dev*
-📌 Version: 1.2.1`
+📌 Version: 1.2.2`
             });
         }
 
@@ -126,8 +125,7 @@ Available Commands:
 - jarvis : Formal greeting  
 - !commands : Show all commands
 - !help : Get help info
-- !sticker : Convert image to sticker
-- !asticker : Convert video/GIF to animated sticker
+- !sticker : Convert image/video/GIF to sticker
 
 Use them in chat to try them out! 👌` })
         }
@@ -169,7 +167,7 @@ Use them in chat to try them out! 👌` })
                         responseType: 'arraybuffer',
                         timeout: 10000, // 10 second timeout
                         headers: {
-                            'User-Agent': 'IRON-MAN-Bot/1.2.1'
+                            'User-Agent': 'IRON-MAN-Bot/1.2.2'
                         }
                     });
                     developerImageBuffer = Buffer.from(response.data);
@@ -254,67 +252,29 @@ Use them in chat to try them out! 👌` })
             }
         }
 
-        // Sticker creation command
+        // Enhanced sticker creation command (supports both images and videos/GIFs)
         if (messageText.startsWith('!sticker') || messageText === '!sticker') {
-            try {
-                const quoted = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
-
-                if (quoted?.imageMessage) {
-                    console.log('Processing sticker from quoted image...');
-                    const buffer = await downloadMedia(sock, quoted.imageMessage);
-
-                    const webpBuffer = await sharp(buffer)
-                        .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-                        .webp({ quality: 80 })
-                        .toBuffer();
-
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        sticker: webpBuffer
-                    }, { quoted: msg });
-
-                } else if (msg.message?.imageMessage) {
-                    console.log('Processing sticker from direct image...');
-                    const buffer = await downloadMedia(sock, msg.message.imageMessage);
-
-                    const webpBuffer = await sharp(buffer)
-                        .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
-                        .webp({ quality: 80 })
-                        .toBuffer();
-
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        sticker: webpBuffer
-                    });
-
-                } else {
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        text: '❗ Sir. Please send an image with !sticker caption or reply to an image with !sticker\n\n📝 Usage:\n• Send image with caption: !sticker\n• Reply to image with: !sticker\n• Send video/GIF with caption: !asticker\n• Reply to video/GIF with: !asticker'
-                    });
-                }
-            } catch (error) {
-                console.error('Error creating sticker:', error);
-                await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Failed to create sticker. Please try again with a valid image.'
-                });
-            }
-        }
-
-        // Animated sticker creation command (check BEFORE the video suggestion)
-        if (messageText.startsWith('!asticker') || messageText === '!asticker') {
             try {
                 const quoted = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
                 let mediaMessage = null;
                 let mediaType = null;
 
-                // Check for quoted video/GIF
-                if (quoted?.videoMessage) {
+                // Check for quoted media (images, videos, GIFs)
+                if (quoted?.imageMessage) {
+                    mediaMessage = quoted.imageMessage;
+                    mediaType = 'image';
+                } else if (quoted?.videoMessage) {
                     mediaMessage = quoted.videoMessage;
                     mediaType = 'video';
                 } else if (quoted?.gifMessage) {
                     mediaMessage = quoted.gifMessage;
                     mediaType = 'video'; // GIFs are treated as videos in Baileys
                 }
-                // Check for direct video/GIF
-                else if (msg.message?.videoMessage) {
+                // Check for direct media (images, videos, GIFs)
+                else if (msg.message?.imageMessage) {
+                    mediaMessage = msg.message.imageMessage;
+                    mediaType = 'image';
+                } else if (msg.message?.videoMessage) {
                     mediaMessage = msg.message.videoMessage;
                     mediaType = 'video';
                 } else if (msg.message?.gifMessage) {
@@ -323,69 +283,88 @@ Use them in chat to try them out! 👌` })
                 }
 
                 if (mediaMessage) {
-                    console.log(`Processing animated sticker from ${mediaType}...`);
+                    if (mediaType === 'image') {
+                        // Process as static sticker
+                        console.log('Processing static sticker from image...');
+                        const buffer = await downloadMedia(sock, mediaMessage);
 
-                    await sock.sendMessage(msg.key.remoteJid, {
-                        text: `🎬 Sir, converting your video/GIF to animated sticker... This may take a moment.\n⏱️ Maximum duration: ${MAX_STICKER_DURATION} seconds`
-                    });
+                        const webpBuffer = await sharp(buffer)
+                            .resize(512, 512, { fit: 'contain', background: { r: 0, g: 0, b: 0, alpha: 0 } })
+                            .webp({ quality: 80 })
+                            .toBuffer();
 
-                    // Download the video/GIF
-                    const buffer = await downloadVideoMedia(sock, mediaMessage, mediaType);
-
-                    // Save to temporary file
-                    const inputPath = `./temp_input_${Date.now()}.mp4`;
-                    const outputPath = `./temp_output_${Date.now()}.webp`;
-
-                    fs.writeFileSync(inputPath, buffer);
-
-                    try {
-                        // Convert to animated WebP
-                        await convertToAnimatedSticker(inputPath, outputPath, MAX_STICKER_DURATION);
-
-                        // Check file size (WhatsApp limit is around 500KB for stickers)
-                        const stats = fs.statSync(outputPath);
-                        const fileSizeInKB = stats.size / 1024;
-                        console.log(`📏 Generated sticker size: ${fileSizeInKB.toFixed(2)} KB`);
-
-                        if (fileSizeInKB > 500) {
-                            console.log('⚠️ File too large, attempting to compress further...');
-                            // Try again with even lower quality and shorter duration
-                            await convertToAnimatedStickerUltraCompressed(inputPath, outputPath, MAX_STICKER_DURATION_COMPRESSED);
-                            const newStats = fs.statSync(outputPath);
-                            const newFileSizeInKB = newStats.size / 1024;
-                            console.log(`📏 Compressed sticker size: ${newFileSizeInKB.toFixed(2)} KB`);
-                        }
-
-                        // Read the converted file
-                        const stickerBuffer = fs.readFileSync(outputPath);
-
-                        // Send as sticker
                         await sock.sendMessage(msg.key.remoteJid, {
-                            sticker: stickerBuffer
+                            sticker: webpBuffer
                         }, quoted ? { quoted: msg } : {});
 
-                        console.log('✅ Animated sticker sent successfully');
+                        console.log('✅ Static sticker sent successfully');
 
-                    } catch (conversionError) {
-                        console.error('Error converting to animated sticker:', conversionError);
+                    } else if (mediaType === 'video') {
+                        // Process as animated sticker using existing animated sticker functionality
+                        console.log(`Processing animated sticker from ${mediaType} using !sticker command...`);
+
                         await sock.sendMessage(msg.key.remoteJid, {
-                            text: '❌ Sir, failed to convert to animated sticker. The video might be too large or in an unsupported format.'
+                            text: `🎬 Sir, converting your video/GIF to animated sticker... This may take a moment.\n⏱️ Maximum duration: ${MAX_STICKER_DURATION} seconds`
                         });
-                    } finally {
-                        // Clean up temporary files
-                        if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
-                        if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+
+                        // Download the video/GIF
+                        const buffer = await downloadVideoMedia(sock, mediaMessage, mediaType);
+
+                        // Save to temporary file
+                        const inputPath = `./temp_input_${Date.now()}.mp4`;
+                        const outputPath = `./temp_output_${Date.now()}.webp`;
+
+                        fs.writeFileSync(inputPath, buffer);
+
+                        try {
+                            // Convert to animated WebP using existing function
+                            await convertToAnimatedSticker(inputPath, outputPath, MAX_STICKER_DURATION);
+
+                            // Check file size (WhatsApp limit is around 500KB for stickers)
+                            const stats = fs.statSync(outputPath);
+                            const fileSizeInKB = stats.size / 1024;
+                            console.log(`📏 Generated animated sticker size: ${fileSizeInKB.toFixed(2)} KB`);
+
+                            if (fileSizeInKB > 500) {
+                                console.log('⚠️ File too large, attempting to compress further...');
+                                // Try again with ultra compression
+                                await convertToAnimatedStickerUltraCompressed(inputPath, outputPath, MAX_STICKER_DURATION_COMPRESSED);
+                                const newStats = fs.statSync(outputPath);
+                                const newFileSizeInKB = newStats.size / 1024;
+                                console.log(`📏 Compressed animated sticker size: ${newFileSizeInKB.toFixed(2)} KB`);
+                            }
+
+                            // Read the converted file
+                            const stickerBuffer = fs.readFileSync(outputPath);
+
+                            // Send as sticker
+                            await sock.sendMessage(msg.key.remoteJid, {
+                                sticker: stickerBuffer
+                            }, quoted ? { quoted: msg } : {});
+
+                            console.log('✅ Animated sticker sent successfully via !sticker command');
+
+                        } catch (conversionError) {
+                            console.error('Error converting video to animated sticker:', conversionError);
+                            await sock.sendMessage(msg.key.remoteJid, {
+                                text: '❌ Sir, failed to convert video to animated sticker. The video might be too large or in an unsupported format.'
+                            });
+                        } finally {
+                            // Clean up temporary files
+                            if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath);
+                            if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath);
+                        }
                     }
 
                 } else {
                     await sock.sendMessage(msg.key.remoteJid, {
-                        text: `❗ Sir, please send a video or GIF with !asticker caption or reply to a video/GIF with !asticker\n\n📝 Usage:\n• Send video/GIF with caption: !asticker\n• Reply to video/GIF with: !asticker\n• Send image with caption: !sticker\n• Reply to image with: !sticker\n\n⚠️ Note: Large videos may take longer to process\n⏱️ Maximum animation length: ${MAX_STICKER_DURATION} seconds`
+                        text: '❗ Sir. Please send an image or video/GIF with !sticker caption or reply to media with !sticker\n\n📝 Usage:\n• Send image with caption: !sticker (creates static sticker)\n• Send video/GIF with caption: !sticker (creates animated sticker)\n• Reply to image with: !sticker\n• Reply to video/GIF with: !sticker'
                     });
                 }
             } catch (error) {
-                console.error('Error creating animated sticker:', error);
+                console.error('Error creating sticker:', error);
                 await sock.sendMessage(msg.key.remoteJid, {
-                    text: '❌ Failed to create animated sticker. Please try again with a valid video or GIF.'
+                    text: '❌ Failed to create sticker. Please try again with a valid image or video/GIF.'
                 });
             }
         }
@@ -397,10 +376,10 @@ Use them in chat to try them out! 👌` })
             });
         }
 
-        // Alternative: Just detect any video/GIF and provide animated sticker option  
+        // Alternative: Just detect any video/GIF and provide sticker option  
         else if ((msg.message?.videoMessage || msg.message?.gifMessage) && !messageText) {
             await sock.sendMessage(msg.key.remoteJid, {
-                text: '🎬 Sir I see you sent a video/GIF! Send "!asticker" to convert it to an animated sticker.'
+                text: '🎬 Sir I see you sent a video/GIF! Send "!sticker" to convert it to an animated sticker.'
             });
         }
 
@@ -408,8 +387,7 @@ Use them in chat to try them out! 👌` })
         if (messageText.startsWith('!') && 
             messageText !== '!commands' && 
             messageText !== '!help' && 
-            messageText !== '!sticker' && 
-            messageText !== '!asticker') {
+            messageText !== '!sticker') {
             
             console.log(`❌ Invalid command "${messageText}", sending video GIF response...`);
             
@@ -421,7 +399,7 @@ Use them in chat to try them out! 👌` })
                 const invalidCommandMessage = `❌ *Invalid Command: "${messageText}"*\n\n` +
                     `🤖 Sir, that command is not recognized in my database.\n\n` +
                     `📝 Type *!commands* to show all commands\n` +
-                    `⚙️ *IRON-MAN Bot v1.2.1*`;
+                    `⚙️ *IRON-MAN Bot v1.2.2*`;
 
                 // Try multiple methods to send the video as GIF-like preview
                 try {
@@ -784,7 +762,7 @@ app.get('/', async (req, res) => {
                         <p style="margin: 5px 0;">❓ <strong>!help</strong> - Bot help center</p>
                         <p style="margin: 5px 0;">📋 <strong>!commands</strong> - Command list</p>
                         <p style="margin: 5px 0;">🎯 <strong>!sticker</strong> - Convert image to sticker</p>
-                        <p style="margin: 5px 0;">🎬 <strong>!asticker</strong> - Convert video/GIF to animated sticker</p>
+                        <p style="margin: 5px 0;">� <strong>!sticker</strong> - Convert image/video/GIF to sticker</p>
                         <p style="margin: 5px 0;">👨‍💻 <strong>"who is pasindu"</strong> - Developer info with image</p>
                     </div>
                     <div style="margin-top: 20px; padding: 15px; background: #e8f5e8; border-radius: 10px; border-left: 4px solid #4CAF50;">

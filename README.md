@@ -1,12 +1,26 @@
-# IRON-MAN WhatsApp Bot v1.2.1 🤖
+# IRON-MAN WhatsApp Bot v1.2.2 🤖
 
 A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sticker creation, MongoDB session persistence, and beautiful web interface.
 
 ## ✨ Features
 
 - 🤖 **Smart Greetings** - Responds to hi, hello, hey with Jarvis welcome message
-- ❓ **Help System** - Interactive help center with IRON-MAN themed responses
-- 🎬 **Animated Sticker Creator** - Convert videos/GIFs to animated WebP stickers with original dimensions and transparency preservation
+- ❓ **Help System** - Interactive help center with IRON-MAN themed rUser: [sends video/GIF with caption "!sticker"]
+Bot: "🎬 Sir, converting your video/GIF to animated sticker... This may take a moment.
+⏱️ Maximum duration: 10 seconds"
+Bot: "📐 Using original video dimensions (no forced scaling)"
+Bot: "📏 Generated sticker size: 245.67 KB"
+Bot: [sends back video as optimized animated WebP sticker with original dimensions and transparency]
+
+User: [sends large video with caption "!sticker"]
+Bot: "🎬 Sir, converting your video/GIF to animated sticker... This may take a moment.
+⏱️ Maximum duration: 10 seconds"
+Bot: "📐 Using original video dimensions (no forced scaling)"
+Bot: "📏 Generated sticker size: 612.34 KB"
+Bot: "⚠️ File too large, attempting to compress further..."
+Bot: "📐 Using moderate scaling (400x400 max) preserving aspect ratio"
+Bot: "📏 Compressed sticker size: 387.12 KB"
+Bot: [sends back ultra-compressed animated sticker with preserved aspect ratio and transparency]Unified Sticker Creator** - Convert images to static stickers and videos/GIFs to animated WebP stickers with single `!sticker` command
 - 👨‍💻 **Developer Info** - Smart developer information with image preview and infinite loop prevention
 - ❌ **Invalid Command Handler** - Video GIF preview response for unrecognized commands with helpful suggestions
 - 🗄️ **MongoDB Storage** - Persistent session storage using MongoDB Atlas
@@ -15,21 +29,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 - 📱 **Mobile Responsive** - Works perfectly on all devices
 - ☁️ **Heroku Ready** - One-click deployment with persistent sessions
 - 🎨 **IRON-MAN Theme** - Styled with IRON-MAN colors and design
-- 🛡️ **Anti-Loop Protection** - Enhanced filtering to prevent infinite message loopssApp Bot v1.2.1 🤖
-
-A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sticker creation, MongoDB session persistence, and beautiful web interface.
-
-## ✨ Features
-
-- 🤖 **Smart Greetings** - Responds to hi, hello, hey with Jarvis welcome message
-- ❓ **Help System** - Interactive help center with Iron Man themed responses
-- � **Animated Sticker Creator** - Convert videos/GIFs to animated WebP stickers with `!asticker` command
-- 🗄️ **MongoDB Storage** - Persistent session storage using MongoDB Atlas
-- 🌐 **Web QR Interface** - Beautiful HTML page for easy QR code scanning
-- 🔄 **Auto Reconnection** - Automatic reconnection on disconnect
-- 📱 **Mobile Responsive** - Works perfectly on all devices
-- ☁️ **Heroku Ready** - One-click deployment with persistent sessions
-- 🎨 **Iron Man Theme** - Styled with Iron Man colors and design
+- 🛡️ **Anti-Loop Protection** - Enhanced filtering to prevent infinite message loops
 
 ## 🚀 Commands
 
@@ -54,46 +54,37 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 - ⚡ **Smart Detection** - Responds to natural language queries about the developer
 
 ### Sticker Commands
-- **`!sticker`** (as image caption) - Convert uploaded image to sticker
-- **`!sticker`** (reply to image) - Convert replied image to sticker
-- **`!asticker`** (as video/GIF caption) - Convert uploaded video/GIF to animated sticker
-- **`!asticker`** (reply to video/GIF) - Convert replied video/GIF to animated sticker
+- **`!sticker`** (as image caption) - Convert uploaded image to static sticker
+- **`!sticker`** (reply to image) - Convert replied image to static sticker
+- **`!sticker`** (as video/GIF caption) - Convert uploaded video/GIF to animated sticker
+- **`!sticker`** (reply to video/GIF) - Convert replied video/GIF to animated sticker
 
-## 📸 Sticker Creation Usage
+## 📸 Unified Sticker Creation Usage
 
-### Method 1: Image with Caption
-1. Select/take an image
+### Method 1: Media with Caption
+1. Select/take an image, video, or GIF
 2. Add caption: `!sticker`
-3. Send → Bot creates sticker instantly
+3. Send → Bot automatically detects media type and creates appropriate sticker
 
-### Method 2: Reply to Image  
-1. Find any image in chat
+### Method 2: Reply to Media  
+1. Find any image, video, or GIF in chat
 2. Reply with: `!sticker`
-3. Bot converts original image to sticker
+3. Bot converts original media to sticker (static for images, animated for videos/GIFs)
 
 ### Method 3: Auto-Suggestion
-1. Send any image without caption
+1. Send any image, video, or GIF without caption
 2. Bot suggests using `!sticker`
 3. Follow the suggestion
 
-## 🎬 Animated Sticker Creation Usage
+## 🎬 Sticker Creation Features
 
-### Method 1: Video/GIF with Caption
-1. Select/record a video or GIF
-2. Add caption: `!asticker`
-3. Send → Bot converts to animated WebP sticker
+### Static Sticker Features (Images):
+- **🖼️ Image Processing** - Converts JPG, PNG, WebP to sticker format
+- **📐 Smart Resizing** - Automatically resizes to 512x512 with proper aspect ratio
+- **🔳 Transparent Background** - Maintains transparency where applicable
+- **⚡ Fast Processing** - Instant conversion using Sharp library
 
-### Method 2: Reply to Video/GIF
-1. Find any video or GIF in chat
-2. Reply with: `!asticker`
-3. Bot converts original video/GIF to animated sticker
-
-### Method 3: Auto-Suggestion
-1. Send any video/GIF without caption
-2. Bot suggests using `!asticker`
-3. Follow the suggestion
-
-### Features:
+### Animated Sticker Features (Videos/GIFs):
 - **🎯 Smart Processing** - Automatically optimizes video for WhatsApp compatibility
 - **� Original Dimensions** - Preserves video/GIF original width and height (no forced scaling)
 - **🔳 Transparency Preservation** - Maintains transparent backgrounds, removes white padding
@@ -312,7 +303,7 @@ iron_man_bot.auth_state
 - **Repository Name**: IRON-MAN  
 - **Package Name**: iron-man (follows npm naming conventions)
 - **Display Name**: IRON-MAN Bot
-- **Version**: 1.2.1
+- **Version**: 1.2.2
 
 ## 🔧 Environment Variables
 
@@ -409,7 +400,7 @@ User: [bot's own developer info message appears in chat]
 Bot: [logs "🚫 Ignoring bot's own developer info message" and doesn't respond - INFINITE LOOP PREVENTED]
 
 User: [sends video without caption]
-Bot: "🎬 Sir I see you sent a video/GIF! Send '!asticker' to convert it to an animated sticker."
+Bot: "🎬 Sir I see you sent a video/GIF! Send '!sticker' to convert it to an animated sticker."
 
 User: "!unknown"
 Bot: [sends IRON-MAN GIF with invalid command message and helpful command suggestions]
@@ -438,7 +429,7 @@ Bot: [sends IRON-MAN GIF with invalid command message and helpful command sugges
 **Animated Sticker Issues:**
 - ✅ Ensure video/GIF is valid (MP4, GIF, WebM, MOV)
 - ✅ Large videos auto-compress to fit WhatsApp limits
-- ✅ Check if video caption is exactly `!asticker`
+- ✅ Check if video caption is exactly `!sticker`
 - ✅ Processing takes 10-30 seconds depending on video size
 - ✅ Bot shows file size info and duration limits during processing
 - ✅ Duration limits: 10 seconds standard, 6 seconds compressed (configurable)
@@ -506,9 +497,10 @@ heroku config
 - **Compression Efficiency:** 60-80% size reduction for animated stickers
 - **Anti-Loop Protection:** 100% effective infinite loop prevention
 
-## 🆕 Recent Updates (v1.2.1)
+## 🆕 Recent Updates (v1.2.2)
 
 ### New Features:
+- 🎯 **Unified Sticker Command** - Single `!sticker` command now handles both images (static) and videos/GIFs (animated)
 - 📐 **Original Dimensions Preservation** - Animated stickers now use video's natural width/height
 - 🔳 **Transparency Preservation** - Removes white backgrounds and maintains original transparency
 - ⏱️ **Configurable Animation Duration** - Set custom maximum length for animated stickers
@@ -526,6 +518,9 @@ heroku config
 - ⚠️ **Fixed Invalid Command Logic** - Corrected boolean logic for proper command validation
 
 ### Enhancements:
+- 🗑️ **Removed `!asticker` Command** - Simplified user experience with unified sticker creation
+- 📚 **Updated Documentation** - All help messages and command lists now reference only `!sticker`
+- 🔄 **Improved Command Suggestions** - Auto-suggestions now consistently use `!sticker`
 - 📊 **Better Error Logging** - Enhanced console logging for debugging
 - 🛡️ **Robust Self-Detection** - Multiple fallback mechanisms to prevent self-triggering
 - 🔄 **Improved Stability** - More reliable message processing with enhanced filtering
