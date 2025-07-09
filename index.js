@@ -15,6 +15,10 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 const welcomeMessage = "Hello!... I'm Jarvis. How can I assist you today?...😊";
 const greetingMessge = "At your service, sir";
 
+// Animated Sticker Configuration
+const MAX_STICKER_DURATION = 10; // Maximum animation length in seconds (adjustable)
+const MAX_STICKER_DURATION_COMPRESSED = 6; // Maximum duration for compressed stickers
+
 // MongoDB Configuration
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://pasinduogdev:PasinduDev678@cluster0.4ns3c.mongodb.net/iron-man-bot';
 
@@ -322,7 +326,7 @@ async function startBot() {
                     console.log(`Processing animated sticker from ${mediaType}...`);
 
                     await sock.sendMessage(msg.key.remoteJid, {
-                        text: '🎬 Sir, converting your video/GIF to animated sticker... This may take a moment.'
+                        text: `🎬 Sir, converting your video/GIF to animated sticker... This may take a moment.\n⏱️ Maximum duration: ${MAX_STICKER_DURATION} seconds`
                     });
 
                     // Download the video/GIF
@@ -336,7 +340,7 @@ async function startBot() {
 
                     try {
                         // Convert to animated WebP
-                        await convertToAnimatedSticker(inputPath, outputPath);
+                        await convertToAnimatedSticker(inputPath, outputPath, MAX_STICKER_DURATION);
 
                         // Check file size (WhatsApp limit is around 500KB for stickers)
                         const stats = fs.statSync(outputPath);
@@ -345,8 +349,8 @@ async function startBot() {
 
                         if (fileSizeInKB > 500) {
                             console.log('⚠️ File too large, attempting to compress further...');
-                            // Try again with even lower quality
-                            await convertToAnimatedStickerUltraCompressed(inputPath, outputPath);
+                            // Try again with even lower quality and shorter duration
+                            await convertToAnimatedStickerUltraCompressed(inputPath, outputPath, MAX_STICKER_DURATION_COMPRESSED);
                             const newStats = fs.statSync(outputPath);
                             const newFileSizeInKB = newStats.size / 1024;
                             console.log(`📏 Compressed sticker size: ${newFileSizeInKB.toFixed(2)} KB`);
@@ -375,7 +379,7 @@ async function startBot() {
 
                 } else {
                     await sock.sendMessage(msg.key.remoteJid, {
-                        text: '❗ Sir, please send a video or GIF with !asticker caption or reply to a video/GIF with !asticker\n\n📝 Usage:\n• Send video/GIF with caption: !asticker\n• Reply to video/GIF with: !asticker\n• Send image with caption: !sticker\n• Reply to image with: !sticker\n\n⚠️ Note: Large videos may take longer to process'
+                        text: `❗ Sir, please send a video or GIF with !asticker caption or reply to a video/GIF with !asticker\n\n📝 Usage:\n• Send video/GIF with caption: !asticker\n• Reply to video/GIF with: !asticker\n• Send image with caption: !sticker\n• Reply to image with: !sticker\n\n⚠️ Note: Large videos may take longer to process\n⏱️ Maximum animation length: ${MAX_STICKER_DURATION} seconds`
                     });
                 }
             } catch (error) {
@@ -505,11 +509,11 @@ async function downloadVideoMedia(sock, message, mediaType = 'video') {
 }
 
 // Helper: Convert video/GIF to animated WebP sticker
-async function convertToAnimatedSticker(inputPath, outputPath) {
+async function convertToAnimatedSticker(inputPath, outputPath, maxDuration = 6) {
     return new Promise((resolve, reject) => {
         ffmpeg(inputPath)
             .inputOptions([
-                '-t', '6',  // Limit to 6 seconds for smaller size
+                '-t', maxDuration.toString(),  // Use configurable max duration
                 '-ss', '0'  // Start from beginning
             ])
             .outputOptions([
@@ -525,6 +529,7 @@ async function convertToAnimatedSticker(inputPath, outputPath) {
             .format('webp')
             .on('start', (commandLine) => {
                 console.log('🎬 FFmpeg command: ' + commandLine);
+                console.log(`⏱️ Maximum duration set to: ${maxDuration} seconds`);
             })
             .on('progress', (progress) => {
                 console.log('Processing: ' + Math.round(progress.percent) + '% done');
@@ -542,11 +547,11 @@ async function convertToAnimatedSticker(inputPath, outputPath) {
 }
 
 // Helper: Ultra-compressed conversion for large files
-async function convertToAnimatedStickerUltraCompressed(inputPath, outputPath) {
+async function convertToAnimatedStickerUltraCompressed(inputPath, outputPath, maxDuration = 4) {
     return new Promise((resolve, reject) => {
         ffmpeg(inputPath)
             .inputOptions([
-                '-t', '4',  // Even shorter duration
+                '-t', maxDuration.toString(),  // Use configurable max duration
                 '-ss', '0'
             ])
             .outputOptions([
@@ -560,6 +565,10 @@ async function convertToAnimatedStickerUltraCompressed(inputPath, outputPath) {
                 '-an'
             ])
             .format('webp')
+            .on('start', (commandLine) => {
+                console.log('🎬 Ultra-compressed FFmpeg command: ' + commandLine);
+                console.log(`⏱️ Ultra-compressed duration set to: ${maxDuration} seconds`);
+            })
             .on('end', () => {
                 console.log('✅ Ultra-compressed animated sticker conversion completed');
                 resolve(true);

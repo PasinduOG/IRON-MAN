@@ -6,7 +6,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 
 - 🤖 **Smart Greetings** - Responds to hi, hello, hey with Jarvis welcome message
 - ❓ **Help System** - Interactive help center with IRON-MAN themed responses
-- 🎬 **Animated Sticker Creator** - Convert videos/GIFs to animated WebP stickers with `!asticker` command
+- 🎬 **Animated Sticker Creator** - Convert videos/GIFs to animated WebP stickers with configurable duration limits
 - 👨‍💻 **Developer Info** - Smart developer information with image preview and infinite loop prevention
 - ❌ **Invalid Command Handler** - Video GIF preview response for unrecognized commands with helpful suggestions
 - 🗄️ **MongoDB Storage** - Persistent session storage using MongoDB Atlas
@@ -96,7 +96,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 ### Features:
 - **🎯 Smart Processing** - Automatically optimizes video for WhatsApp compatibility
 - **📏 Size Optimization** - Resizes to 512x512 maintaining aspect ratio
-- **⏱️ Duration Limit** - Clips videos to 6 seconds (4 seconds for ultra-compression)
+- **⏱️ Configurable Duration** - Customizable max animation length (default: 10 seconds)
 - **🔇 Audio Removal** - Removes audio for smaller file size
 - **🔄 Format Support** - Works with MP4, GIF, WebM, and other video formats
 - **📊 Intelligent Compression** - Dual-stage compression for optimal file sizes
@@ -104,19 +104,27 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 - **🗜️ Advanced Encoding** - Uses WebP with quality 50% (30% for ultra-compression)
 - **📏 Size Monitoring** - Automatic file size checking (500KB WhatsApp limit)
 - **🎛️ Fallback Processing** - Ultra-compression mode for large videos
+- **⚙️ Easy Configuration** - Simple constants for duration adjustment
 
 ## 🎯 Animated Sticker Technology
 
+### Duration Configuration:
+```javascript
+// Easy-to-modify constants in index.js
+const MAX_STICKER_DURATION = 10;           // Standard processing (adjustable)
+const MAX_STICKER_DURATION_COMPRESSED = 6; // Ultra-compression (adjustable)
+```
+
 ### Compression Stages:
 1. **Standard Compression** (Default):
-   - Duration: 6 seconds max
+   - Duration: Configurable (default: 10 seconds)
    - Resolution: 512x512px
    - Frame Rate: 15 FPS
    - Quality: 50%
    - Target Size: <500KB
 
 2. **Ultra Compression** (Auto-triggered if needed):
-   - Duration: 4 seconds max
+   - Duration: Configurable (default: 6 seconds)
    - Resolution: 320x320px
    - Frame Rate: 10 FPS
    - Quality: 30%
@@ -133,6 +141,21 @@ Video/GIF Input → Download → FFmpeg Processing → Size Check → Ultra-Comp
 - **Method**: 6 (best quality/compression ratio)
 - **Audio**: Removed for smaller files
 - **Padding**: Smart aspect ratio preservation
+- **Duration Control**: Configurable max length with user notification
+
+### Configuration Guide:
+To adjust animation duration limits, modify these constants in `index.js`:
+```javascript
+const MAX_STICKER_DURATION = 10;           // Change to desired seconds
+const MAX_STICKER_DURATION_COMPRESSED = 6; // Change for compressed version
+```
+
+**Benefits of Configurable Duration:**
+- ⚡ **Faster Processing** - Shorter durations = quicker conversion
+- 📱 **Better Compatibility** - Fits WhatsApp's size and performance limits
+- 🎯 **User Awareness** - Bot informs users about duration limits
+- 🔧 **Easy Adjustment** - Simple constants for quick changes
+- 📊 **Optimal Performance** - Balances quality and file size
 
 ## 💻 Local Development
 
@@ -346,16 +369,18 @@ User: [sends image without caption]
 Bot: "📸 Sir I see you sent an image! Send '!sticker' to convert it to a sticker."
 
 User: [sends video/GIF with caption "!asticker"]
-Bot: "🎬 Sir, converting your video/GIF to animated sticker... This may take a moment."
+Bot: "🎬 Sir, converting your video/GIF to animated sticker... This may take a moment.
+⏱️ Maximum duration: 10 seconds"
 Bot: "📏 Generated sticker size: 245.67 KB"
 Bot: [sends back video as optimized animated WebP sticker]
 
 User: [sends large video with caption "!asticker"]
-Bot: "🎬 Sir, converting your video/GIF to animated sticker... This may take a moment."
+Bot: "🎬 Sir, converting your video/GIF to animated sticker... This may take a moment.
+⏱️ Maximum duration: 10 seconds"
 Bot: "📏 Generated sticker size: 612.34 KB"
 Bot: "⚠️ File too large, attempting to compress further..."
 Bot: "📏 Compressed sticker size: 387.12 KB"
-Bot: [sends back ultra-compressed animated sticker]
+Bot: [sends back ultra-compressed animated sticker with 6-second limit]
 
 User: "who is pasindu"
 Bot: [sends developer image with detailed bio including background, skills, projects, and contact info]
@@ -398,7 +423,9 @@ Bot: [sends IRON-MAN GIF with invalid command message and helpful command sugges
 - ✅ Large videos auto-compress to fit WhatsApp limits
 - ✅ Check if video caption is exactly `!asticker`
 - ✅ Processing takes 10-30 seconds depending on video size
-- ✅ Bot shows file size info during processing
+- ✅ Bot shows file size info and duration limits during processing
+- ✅ Duration limits: 10 seconds standard, 6 seconds compressed (configurable)
+- ✅ Modify `MAX_STICKER_DURATION` constants in code to adjust limits
 
 **Developer Info Issues:**
 - ✅ Enhanced anti-loop protection prevents infinite responses
@@ -461,6 +488,12 @@ heroku config
 
 ## 🆕 Recent Updates (v1.2.1)
 
+### New Features:
+- ⏱️ **Configurable Animation Duration** - Set custom maximum length for animated stickers
+- 📊 **Duration Notifications** - Users informed about animation length limits
+- 🎛️ **Easy Configuration** - Simple constants for quick duration adjustments
+- 🔧 **Enhanced Processing** - Better control over video conversion parameters
+
 ### Bug Fixes:
 - 🛡️ **Fixed Infinite Loop Issue** - Enhanced developer info filtering prevents bot responding to its own messages
 - 🔍 **Improved Message Detection** - Multi-layered checks for bot-generated content
@@ -510,6 +543,7 @@ Bot: [video preview with: "❌ Invalid Command: '!test123' - Sir, that command i
 - [x] 📏 Smart video compression ✅ **IMPLEMENTED**
 - [x] 👨‍💻 Developer info with image preview ✅ **IMPLEMENTED**
 - [x] 🛡️ Anti-loop protection system ✅ **IMPLEMENTED**
+- [x] ⏱️ Configurable animation duration ✅ **IMPLEMENTED**
 - [ ] 🎵 Audio message responses
 - [ ] 🌍 Multi-language support
 - [ ] 📊 Analytics dashboard
