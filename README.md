@@ -1,4 +1,4 @@
-# IRON-MAN WhatsApp Bot v1.3.0 (with AI Memory) 🤖
+# IRON-MAN WhatsApp Bot v1.4.0 - AI Memory Edition 🤖
 
 A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, advanced sticker creation, MongoDB session persistence, Google Gemini AI integration with conversation memory, and beautiful web interface. **Now deployed live on Heroku with AI memory management!**
 
@@ -417,7 +417,7 @@ GITHUB_USERNAME=PasinduOG
 **Status Commands:**
 - **User**: `!ping` → **Bot**: `🏓 *Pong!* Bot is alive and running!`
 - **User**: `!uptime` → **Bot**: `🤖 *Bot Status Report* ✅ Status: Online & Active ⏰ Uptime: 2h 45m 30s`
-- **User**: `!info` → **Bot**: `🤖 *IRON-MAN Bot Information* 🔥 Version: 1.3.0`
+- **User**: `!info` → **Bot**: `🤖 *IRON-MAN Bot Information* 🔥 Version: 1.4.0 - AI Memory Edition`
 
 **AI Response Examples:**
 The bot uses Google Gemini AI with conversation memory to provide intelligent Jarvis-style responses:

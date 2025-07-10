@@ -19,6 +19,11 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 // Bot startup time tracking
 const startTime = Date.now();
 
+// Bot Version Configuration
+const BOT_VERSION = '1.4.0';
+const BOT_VERSION_NAME = 'AI Memory Edition';
+const BOT_VERSION_FULL = `${BOT_VERSION} - ${BOT_VERSION_NAME}`;
+
 // GitHub Profile Configuration
 const GITHUB_USERNAME = process.env.GITHUB_USERNAME || 'PasinduOG';
 let githubProfileCache = null;
@@ -36,10 +41,9 @@ async function fetchGithubProfile(username = GITHUB_USERNAME) {
 
     try {
         console.log(`🔄 Fetching GitHub profile for @${username}...`);
-        const response = await axios.get(`https://api.github.com/users/${username}`, {
-            headers: {
-                'User-Agent': 'IRON-MAN-Bot/1.0'
-            },
+        const response = await axios.get(`https://api.github.com/users/${username}`, {                        headers: {
+                            'User-Agent': `IRON-MAN-Bot/${BOT_VERSION}`
+                        },
             timeout: 10000
         });
 
@@ -495,7 +499,7 @@ async function startBot() {
 - jarvis : Formal greeting
 
 ⚙️ Bot created by *Pasindu OG Dev*
-📌 Version: 1.3.0 (with AI Memory)
+📌 Version: 1.4.0 - AI Memory Edition
 👤 Session: ${userSession.messageCount} messages`
             });
         }
@@ -603,7 +607,7 @@ Use them in chat to try them out! 👌` })
                         responseType: 'arraybuffer',
                         timeout: 10000, // 10 second timeout
                         headers: {
-                            'User-Agent': 'IRON-MAN-Bot/1.3.0'
+                            'User-Agent': `IRON-MAN-Bot/${BOT_VERSION}`
                         }
                     });
                     developerImageBuffer = Buffer.from(response.data);
@@ -839,7 +843,7 @@ Use them in chat to try them out! 👌` })
                 const invalidCommandMessage = `❌ *Invalid Command: "${messageText}"*\n\n` +
                     `🤖 Sir, that command is not recognized in my database.\n\n` +
                     `📝 Type *!commands* to show all commands\n` +
-                    `⚙️ *IRON-MAN Bot v1.3.0*\n` +
+                    `⚙️ *IRON-MAN Bot v${BOT_VERSION}*\n` +
                     `👤 Your session: ${userSession.messageCount} messages`;
 
                 // Try multiple methods to send the video as GIF-like preview
@@ -920,7 +924,7 @@ Use them in chat to try them out! 👌` })
         if (messageText === '!info' || messageText === '!about' || messageText === '!version') {
             await sock.sendMessage(userId, {
                 text: `🤖 *IRON-MAN Bot Information*\n\n` +
-                    `🔥 Version: 1.3.0 (with AI Memory)\n` +
+                    `🔥 Version: 1.4.0 - AI Memory Edition\n` +
                     `👨‍💻 Developer: Pasindu Madhuwantha (PasinduOG)\n` +
                     `⚙️ Built with: Node.js, Baileys, MongoDB\n` +
                     `🌟 Features: AI Chat with Memory, Sticker Creation, Session Persistence\n\n` +
