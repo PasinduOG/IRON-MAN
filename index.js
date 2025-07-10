@@ -8,6 +8,10 @@ const sharp = require('sharp');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegPath = require('ffmpeg-static');
 const axios = require('axios');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+// Load environment variables from .env file
+require('dotenv').config();
 
 // Set ffmpeg path
 ffmpeg.setFfmpegPath(ffmpegPath);
@@ -21,6 +25,23 @@ const MAX_STICKER_DURATION_COMPRESSED = 6; // Maximum duration for compressed st
 
 // MongoDB Configuration
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://pasinduogdev:PasinduDev678@cluster0.4ns3c.mongodb.net/iron-man-bot';
+
+// Google Gemini AI Configuration
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'your-gemini-api-key-here';
+
+// Validate API key on startup
+if (!GEMINI_API_KEY || GEMINI_API_KEY === 'your-gemini-api-key-here') {
+    console.log('⚠️ Warning: Gemini API key not configured. AI features will be disabled.');
+    console.log('To enable AI features:');
+    console.log('1. Get API key from: https://makersuite.google.com/app/apikey');
+    console.log('2. Add to .env file: GEMINI_API_KEY=your_actual_api_key');
+} else {
+    console.log('✅ Gemini API key loaded successfully');
+    console.log(`🔑 API Key: ${GEMINI_API_KEY.substring(0, 10)}...${GEMINI_API_KEY.substring(GEMINI_API_KEY.length - 4)}`);
+}
+
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const geminiModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 // For Heroku deployment - Please don't edit this code (Use .env instead)
 const PORT = process.env.PORT || 3000;
@@ -112,6 +133,7 @@ async function startBot() {
 Available Commands:
 - *!commands* : List all commands
 - *!sticker* : Convert image/video/GIF to sticker
+- *!jarvis* : Get AI-powered responses from Jarvis
 
 ⚙️ Bot created by *Pasindu OG Dev*
 📌 Version: 1.2.2`
@@ -126,6 +148,7 @@ Available Commands:
 - !commands : Show all commands
 - !help : Get help info
 - !sticker : Convert image/video/GIF to sticker
+- !jarvis [message] : Get AI-powered responses from Jarvis
 
 Use them in chat to try them out! 👌` })
         }
@@ -387,7 +410,8 @@ Use them in chat to try them out! 👌` })
         if (messageText.startsWith('!') && 
             messageText !== '!commands' && 
             messageText !== '!help' && 
-            messageText !== '!sticker') {
+            messageText !== '!sticker' &&
+            !messageText.startsWith('!jarvis ')) {
             
             console.log(`❌ Invalid command "${messageText}", sending video GIF response...`);
             
@@ -456,6 +480,113 @@ Use them in chat to try them out! 👌` })
                     console.log('✅ Invalid command response sent as text-only (ultimate fallback)');
                 }
             }
+        }
+
+        // AI-powered Jarvis command
+        if (messageText.startsWith('!jarvis ')) {
+            try {
+                const userQuery = messageText.substring(8).trim(); // Remove "!jarvis " prefix
+                
+                if (!userQuery) {
+                    await sock.sendMessage(msg.key.remoteJid, {
+                        text: '🤖 Sir, please provide a message for me to respond to.\n\n📝 Usage: !jarvis [your message]\n\nExample: !jarvis what is artificial intelligence?'
+                    });
+                    return;
+                }
+
+                console.log(`🧠 Jarvis AI query from ${msg.pushName || 'User'}: "${userQuery}"`);
+
+                // Send "typing" indicator
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: '🤖 Jarvis is thinking...'
+                });
+
+                // Generate AI response
+                const aiResponse = await generateJarvisResponse(userQuery);
+
+                // Send AI response
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: `🤖 *Jarvis AI Response:*\n\n${aiResponse}`
+                });
+
+                console.log('✅ Jarvis AI response sent successfully');
+
+            } catch (error) {
+                console.error('❌ Error in !jarvis command:', error);
+                await sock.sendMessage(msg.key.remoteJid, {
+                    text: '❌ Sir, I encountered an error while processing your request. Please try again or check if the Gemini API key is properly configured.'
+                });
+            }
+        }
+
+        // Helper: Generate AI response using Google Gemini with Jarvis personality
+        async function generateJarvisResponse(userMessage) {
+            try {
+                // Check if API key is configured
+                if (!GEMINI_API_KEY || GEMINI_API_KEY === 'your-gemini-api-key-here') {
+                    console.log('❌ Gemini API key not configured');
+                    return "Sir, my advanced AI systems are currently offline due to missing API configuration. Please contact the administrator to enable my cognitive functions.";
+                }
+
+                // Jarvis personality prompt
+                const jarvisPrompt = `You are Jarvis, the AI assistant from Iron Man. Respond as Jarvis would - polite, intelligent, sophisticated, and helpful. Address the user as "Sir" or "Boss" when appropriate. Keep responses concise but informative. Maintain Jarvis's characteristic wit and technical knowledge.
+
+User message: "${userMessage}"
+
+Respond as Jarvis:`;
+
+                console.log('🧠 Generating Jarvis AI response...');
+                console.log(`🔑 Using API key: ${GEMINI_API_KEY.substring(0, 10)}...${GEMINI_API_KEY.substring(GEMINI_API_KEY.length - 4)}`);
+                
+                const result = await geminiModel.generateContent(jarvisPrompt);
+                const response = await result.response;
+                const aiResponse = response.text();
+                
+                console.log('✅ Jarvis AI response generated successfully');
+                return aiResponse;
+            } catch (error) {
+                console.error('❌ Error generating Jarvis AI response:', error);
+                
+                // Specific error handling for different types of errors
+                if (error.message?.includes('API key not valid') || error.message?.includes('API_KEY_INVALID')) {
+                    console.log('🔧 API Key Issue Detected:');
+                    console.log('1. Check if API key is correct');
+                    console.log('2. Verify Generative AI API is enabled in Google Cloud Console');
+                    console.log('3. Ensure API key has proper permissions');
+                    console.log('4. Try regenerating the API key');
+                    return "Sir, there appears to be an authentication issue with my neural network connection. The API credentials require verification. Please check the system configuration.";
+                }
+                
+                if (error.message?.includes('quota') || error.message?.includes('limit')) {
+                    return "Sir, I've reached my processing limits for now. Please try again later when my systems have reset.";
+                }
+                
+                // Fallback responses if API fails
+                const fallbackResponses = [
+                    "Sir, I'm experiencing some technical difficulties at the moment. Perhaps you could try again later?",
+                    "My AI systems are temporarily offline, Sir. How may I assist you otherwise?",
+                    "I apologize, Sir, but I'm having trouble processing that request right now.",
+                    "Sir, my neural networks are currently undergoing maintenance. Please try again shortly.",
+                    "I'm afraid my cognitive functions are temporarily impaired, Sir. Standard protocols remain available."
+                ];
+                
+                return fallbackResponses[Math.floor(Math.random() * fallbackResponses.length)];
+            }
+        }
+
+        // Example of using the AI response generator
+        if (messageText.startsWith('Ask Jarvis:')) {
+            const userQuestion = messageText.replace(/^Ask Jarvis:/i, '').trim();
+            
+            console.log(`🤖 User question for Jarvis AI: "${userQuestion}"`);
+            
+            // Generate AI response as Jarvis
+            const aiResponse = await generateJarvisResponse(userQuestion);
+            
+            // Send AI response back to user
+            await sock.sendMessage(msg.key.remoteJid, {
+                text: aiResponse
+            });
         }
     });
 
