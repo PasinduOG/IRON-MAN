@@ -25,27 +25,145 @@ const MAX_STICKER_DURATION_COMPRESSED = 6; // Maximum duration for compressed st
 // AI Chat Configuration
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'your-gemini-api-key-here';
 
-// Custom AI Chat Handler
+// Multi-user management
+const userSessions = new Map(); // Store user session data
+const userRateLimits = new Map(); // Store user rate limiting data
+const activeProcesses = new Map(); // Track active processing per user
+
+// Rate limiting configuration
+const RATE_LIMIT_WINDOW = 60000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 10; // Max 10 requests per minute per user
+const AI_COOLDOWN = 3000; // 3 seconds between AI requests per user
+const STICKER_COOLDOWN = 5000; // 5 seconds between sticker requests per user
+
+// Rate limiting helper
+function checkRateLimit(userId, type = 'general') {
+    const now = Date.now();
+    const userKey = `${userId}_${type}`;
+    
+    if (!userRateLimits.has(userKey)) {
+        userRateLimits.set(userKey, { count: 0, resetTime: now + RATE_LIMIT_WINDOW, lastRequest: 0 });
+    }
+    
+    const userLimit = userRateLimits.get(userKey);
+    
+    // Reset counter if window expired
+    if (now > userLimit.resetTime) {
+        userLimit.count = 0;
+        userLimit.resetTime = now + RATE_LIMIT_WINDOW;
+    }
+    
+    // Check specific cooldowns
+    if (type === 'ai' && (now - userLimit.lastRequest) < AI_COOLDOWN) {
+        return { allowed: false, reason: `Please wait ${Math.ceil((AI_COOLDOWN - (now - userLimit.lastRequest)) / 1000)} seconds before using AI again` };
+    }
+    
+    if (type === 'sticker' && (now - userLimit.lastRequest) < STICKER_COOLDOWN) {
+        return { allowed: false, reason: `Please wait ${Math.ceil((STICKER_COOLDOWN - (now - userLimit.lastRequest)) / 1000)} seconds before creating another sticker` };
+    }
+    
+    // Check general rate limit
+    if (userLimit.count >= MAX_REQUESTS_PER_WINDOW) {
+        return { allowed: false, reason: 'Rate limit exceeded. Please wait a moment before sending more commands.' };
+    }
+    
+    userLimit.count++;
+    userLimit.lastRequest = now;
+    return { allowed: true };
+}
+
+// User session helper
+function getUserSession(userId) {
+    if (!userSessions.has(userId)) {
+        userSessions.set(userId, {
+            id: userId,
+            joinedAt: Date.now(),
+            messageCount: 0,
+            lastActivity: Date.now(),
+            preferences: {}
+        });
+    }
+    
+    const session = userSessions.get(userId);
+    session.lastActivity = Date.now();
+    session.messageCount++;
+    return session;
+}
+
+// Clean up inactive sessions (run periodically)
+function cleanupInactiveSessions() {
+    const now = Date.now();
+    const INACTIVE_THRESHOLD = 30 * 60 * 1000; // 30 minutes
+    
+    for (const [userId, session] of userSessions.entries()) {
+        if (now - session.lastActivity > INACTIVE_THRESHOLD) {
+            userSessions.delete(userId);
+            userRateLimits.delete(`${userId}_general`);
+            userRateLimits.delete(`${userId}_ai`);
+            userRateLimits.delete(`${userId}_sticker`);
+            activeProcesses.delete(userId);
+        }
+    }
+}
+
+// Run cleanup every 10 minutes
+setInterval(cleanupInactiveSessions, 10 * 60 * 1000);
+
+// Enhanced AI Chat Handler with better multi-user support
 async function handleChatCommand(client, msg, args) {
+    const userId = msg.key.remoteJid;
     const prompt = args.join(" ");
-    if (!prompt) return client.sendMessage(msg.key.remoteJid, { text: "❌ Usage: !jarvis <prompt>" });
+    
+    if (!prompt) return client.sendMessage(userId, { text: "❌ Usage: !jarvis <prompt>" });
 
-    // Send thinking message
-    await client.sendMessage(msg.key.remoteJid, { text: "🤖 Thinking..." });
+    // Check rate limiting
+    const rateCheck = checkRateLimit(userId, 'ai');
+    if (!rateCheck.allowed) {
+        return client.sendMessage(userId, { text: `⏰ ${rateCheck.reason}` });
+    }
 
+    // Check if user already has an active AI request
+    if (activeProcesses.has(`${userId}_ai`)) {
+        return client.sendMessage(userId, { text: "🤖 Please wait, I'm still processing your previous request..." });
+    }
+
+    // Mark as active
+    activeProcesses.set(`${userId}_ai`, Date.now());
+    
+    // Get user session
+    const session = getUserSession(userId);
+    
     try {
+        // Send thinking message
+        await client.sendMessage(userId, { text: "🤖 Thinking..." });
+
         const res = await axios.post(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-            { contents: [{ parts: [{ text: prompt }] }] }
+            { contents: [{ parts: [{ text: prompt }] }] },
+            { timeout: 30000 } // 30 second timeout
         );
 
         const aiReply = res.data.candidates?.[0]?.content?.parts?.[0]?.text || "🤖 No response.";
-        await client.sendMessage(msg.key.remoteJid, {
+        await client.sendMessage(userId, {
             text: `🤖 *Jarvis Response:*\n\n${aiReply}`
         });
+        
+        console.log(`✅ AI response sent to user ${session.id} (Message #${session.messageCount})`);
+        
     } catch (err) {
-        console.error("Gemini error:", err);
-        client.sendMessage(msg.key.remoteJid, { text: "❌ Error with Gemini API." });
+        console.error(`❌ Gemini error for user ${userId}:`, err.message);
+        
+        let errorMessage = "❌ Error with Gemini AI.";
+        if (err.code === 'ECONNABORTED') {
+            errorMessage = "⏰ AI request timed out. Please try again with a shorter prompt.";
+        } else if (err.response?.status === 429) {
+            errorMessage = "🚫 AI service is busy. Please try again in a few moments.";
+        }
+        
+        client.sendMessage(userId, { text: errorMessage });
+    } finally {
+        // Remove from active processes
+        activeProcesses.delete(`${userId}_ai`);
     }
 }
 
@@ -95,7 +213,8 @@ async function startBot() {
                 }, 3000);
             }
         } else if (connection === 'open') {
-            console.log('✅ Jarvis: online and ready');
+            console.log('✅ Jarvis: online and ready for multi-user interactions');
+            console.log(`📊 System ready: ${userSessions.size} active sessions`);
             currentQR = null;
             isConnected = true;
         }
@@ -111,7 +230,13 @@ async function startBot() {
         // Ignore messages from the bot itself to prevent infinite loops
         if (msg.key.fromMe) return;
 
-        console.log(`New message from ${msg.key.remoteJid}:`, msg.message);
+        const userId = msg.key.remoteJid;
+        const senderName = msg.pushName || 'User';
+        
+        // Get or create user session
+        const userSession = getUserSession(userId);
+        
+        console.log(`📨 Message #${userSession.messageCount} from ${senderName} (${userId})`);
 
         // Extract message text from different message types
         const messageText = msg.message?.conversation ||
@@ -121,21 +246,29 @@ async function startBot() {
             msg.message?.gifMessage?.caption ||
             '';
 
+        // Check general rate limiting for commands
+        if (messageText.startsWith('!')) {
+            const rateCheck = checkRateLimit(userId, 'general');
+            if (!rateCheck.allowed) {
+                return sock.sendMessage(userId, { text: `⏰ ${rateCheck.reason}` });
+            }
+        }
+
         const welcomeRegex = /^(hi|hello|hey)(\s|$)/i;
         const greetingRegex = /^(jarvis)(\s|$)/i;
 
         if (welcomeRegex.test(messageText)) {
-            sock.sendMessage(msg.key.remoteJid, { text: welcomeMessage });
+            sock.sendMessage(userId, { text: welcomeMessage });
         }
 
         if (greetingRegex.test(messageText)) {
-            sock.sendMessage(msg.key.remoteJid, { text: greetingMessge });
+            sock.sendMessage(userId, { text: greetingMessge });
         }
 
         if (messageText === '!help') {
             const imageBuffer = fs.readFileSync('./src/ironman.jpg') // your image path
 
-            await sock.sendMessage(msg.key.remoteJid, {
+            await sock.sendMessage(userId, {
                 image: imageBuffer,
                 caption: `🤖 *IRON-MAN Bot Help Center*
 
@@ -145,12 +278,13 @@ Available Commands:
 - *!jarvis <prompt>* : Get AI-powered responses
 
 ⚙️ Bot created by *Pasindu OG Dev*
-📌 Version: 1.3.0`
+📌 Version: 1.3.0
+👤 Session: ${userSession.messageCount} messages`
             });
         }
 
         if (messageText === '!commands') {
-            await sock.sendMessage(msg.key.remoteJid, {
+            await sock.sendMessage(userId, {
                 text: `📝 Available Commands:
 - hi, hello, hey : Casual Jarvis greeting
 - jarvis : Formal greeting  
@@ -158,8 +292,36 @@ Available Commands:
 - !help : Get help info
 - !sticker : Convert image/video/GIF to sticker
 - !jarvis <prompt> : Get AI-powered responses
+- !stats : Show your usage statistics
 
+👤 Your session: ${userSession.messageCount} messages
 Use them in chat to try them out! 👌` })
+        }
+
+        if (messageText === '!stats') {
+            const joinedAgo = Math.floor((Date.now() - userSession.joinedAt) / 1000 / 60); // minutes
+            const lastActiveAgo = Math.floor((Date.now() - userSession.lastActivity) / 1000); // seconds
+            
+            await sock.sendMessage(userId, {
+                text: `📊 *Your Bot Statistics*
+
+👤 *User Session:*
+• Messages sent: ${userSession.messageCount}
+• Joined: ${joinedAgo} minutes ago
+• Last active: ${lastActiveAgo} seconds ago
+
+🤖 *Bot Status:*
+• Total active users: ${userSessions.size}
+• Active processes: ${activeProcesses.size}
+• Your session ID: ${userSession.id.substring(0, 15)}***
+
+⚡ *Rate Limits:*
+• General commands: Available
+• AI requests: Available  
+• Sticker creation: Available
+
+🎯 Keep chatting with IRON-MAN Bot!`
+            });
         }
 
         // Enhanced regex pattern for developer info queries
@@ -168,9 +330,7 @@ Use them in chat to try them out! 👌` })
         const developerInfoPattern = /(?:who\s+is|tell\s+me\s+about|about|what\s+about)\s+(?:pasindu(?:\s+madhuwantha)?|madhuwantha|og|pasinduog|the\s+developer|creator|owner|dev)/i;
 
         if (developerInfoPattern.test(messageText)) {
-            const senderName = msg.pushName || 'User';
-
-            console.log(`👨‍💻 Developer info requested by ${senderName}`);
+            console.log(`👨‍💻 Developer info requested by ${senderName} (Session: ${userSession.messageCount})`);
 
             // Enhanced check to prevent responding to bot's own captions and messages
             if (messageText.includes('Built with ❤️ by Pasindu Madhuwantha') ||
@@ -194,7 +354,7 @@ Use them in chat to try them out! 👌` })
                 // Try to load developer image from GitHub avatar URL
                 let developerImageBuffer;
                 try {
-                    console.log('📥 Downloading developer image from GitHub...');
+                    console.log(`📥 Downloading developer image for user ${senderName}...`);
                     const response = await axios.get('https://avatars.githubusercontent.com/u/126347762?v=4', {
                         responseType: 'arraybuffer',
                         timeout: 10000, // 10 second timeout
@@ -203,9 +363,9 @@ Use them in chat to try them out! 👌` })
                         }
                     });
                     developerImageBuffer = Buffer.from(response.data);
-                    console.log('✅ Developer image downloaded successfully');
+                    console.log(`✅ Developer image downloaded successfully for ${senderName}`);
                 } catch (imageError) {
-                    console.log('⚠️ Failed to download GitHub avatar:', imageError.message);
+                    console.log(`⚠️ Failed to download GitHub avatar for ${senderName}:`, imageError.message);
                     console.log('🔄 Using fallback Iron Man image');
                     // Fallback to Iron Man image if GitHub avatar fails
                     developerImageBuffer = fs.readFileSync('./src/ironman.jpg');
@@ -260,14 +420,14 @@ Use them in chat to try them out! 👌` })
                     `*Built with ❤️ by Pasindu Madhuwantha*`;
 
                 // Send developer info with image preview
-                await sock.sendMessage(msg.key.remoteJid, {
+                await sock.sendMessage(userId, {
                     image: developerImageBuffer,
                     caption: developerInfo
                 });
 
-                console.log('✅ Developer info sent successfully with image preview');
+                console.log(`✅ Developer info sent successfully to ${senderName} with image preview`);
             } catch (error) {
-                console.error('Error sending developer info:', error);
+                console.error(`❌ Error sending developer info to ${senderName}:`, error);
 
                 // Fallback: Send text-only developer info if image fails
                 const developerInfoText = `👨‍💻 *About Pasindu Madhuwantha (PasinduOG)*\n\n` +
@@ -278,7 +438,7 @@ Use them in chat to try them out! 👌` })
                     `📧 Email: pasinduogdev@gmail.com\n\n` +
                     `*Built with ❤️ by Pasindu Madhuwantha*`;
 
-                await sock.sendMessage(msg.key.remoteJid, {
+                await sock.sendMessage(userId, {
                     text: developerInfoText
                 });
             }
@@ -286,6 +446,20 @@ Use them in chat to try them out! 👌` })
 
         // Enhanced sticker creation command (supports both images and videos/GIFs)
         if (messageText.startsWith('!sticker') || messageText === '!sticker') {
+            // Check rate limiting for sticker creation
+            const rateCheck = checkRateLimit(userId, 'sticker');
+            if (!rateCheck.allowed) {
+                return sock.sendMessage(userId, { text: `⏰ ${rateCheck.reason}` });
+            }
+
+            // Check if user already has an active sticker process
+            if (activeProcesses.has(`${userId}_sticker`)) {
+                return sock.sendMessage(userId, { text: "🎬 Please wait, I'm still processing your previous sticker request..." });
+            }
+
+            // Mark as active
+            activeProcesses.set(`${userId}_sticker`, Date.now());
+
             try {
                 const quoted = msg.message.extendedTextMessage?.contextInfo?.quotedMessage;
                 let mediaMessage = null;
@@ -317,7 +491,7 @@ Use them in chat to try them out! 👌` })
                 if (mediaMessage) {
                     if (mediaType === 'image') {
                         // Process as static sticker
-                        console.log('Processing static sticker from image...');
+                        console.log(`📸 Processing static sticker for user ${senderName}...`);
                         const buffer = await downloadMedia(sock, mediaMessage);
 
                         const webpBuffer = await sharp(buffer)
@@ -325,26 +499,26 @@ Use them in chat to try them out! 👌` })
                             .webp({ quality: 80 })
                             .toBuffer();
 
-                        await sock.sendMessage(msg.key.remoteJid, {
+                        await sock.sendMessage(userId, {
                             sticker: webpBuffer
                         }, quoted ? { quoted: msg } : {});
 
-                        console.log('✅ Static sticker sent successfully');
+                        console.log(`✅ Static sticker sent successfully to ${senderName}`);
 
                     } else if (mediaType === 'video') {
                         // Process as animated sticker using existing animated sticker functionality
-                        console.log(`Processing animated sticker from ${mediaType} using !sticker command...`);
+                        console.log(`🎬 Processing animated sticker for user ${senderName}...`);
 
-                        await sock.sendMessage(msg.key.remoteJid, {
+                        await sock.sendMessage(userId, {
                             text: `🎬 Sir, converting your video/GIF to animated sticker... This may take a moment.\n⏱️ Maximum duration: ${MAX_STICKER_DURATION} seconds`
                         });
 
                         // Download the video/GIF
                         const buffer = await downloadVideoMedia(sock, mediaMessage, mediaType);
 
-                        // Save to temporary file
-                        const inputPath = `./temp_input_${Date.now()}.mp4`;
-                        const outputPath = `./temp_output_${Date.now()}.webp`;
+                        // Save to temporary file with user ID to avoid conflicts
+                        const inputPath = `./temp_input_${userId.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.mp4`;
+                        const outputPath = `./temp_output_${userId.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.webp`;
 
                         fs.writeFileSync(inputPath, buffer);
 
@@ -355,30 +529,30 @@ Use them in chat to try them out! 👌` })
                             // Check file size (WhatsApp limit is around 500KB for stickers)
                             const stats = fs.statSync(outputPath);
                             const fileSizeInKB = stats.size / 1024;
-                            console.log(`📏 Generated animated sticker size: ${fileSizeInKB.toFixed(2)} KB`);
+                            console.log(`📏 Generated animated sticker size for ${senderName}: ${fileSizeInKB.toFixed(2)} KB`);
 
                             if (fileSizeInKB > 500) {
-                                console.log('⚠️ File too large, attempting to compress further...');
+                                console.log(`⚠️ File too large for ${senderName}, attempting to compress further...`);
                                 // Try again with ultra compression
                                 await convertToAnimatedStickerUltraCompressed(inputPath, outputPath, MAX_STICKER_DURATION_COMPRESSED);
                                 const newStats = fs.statSync(outputPath);
                                 const newFileSizeInKB = newStats.size / 1024;
-                                console.log(`📏 Compressed animated sticker size: ${newFileSizeInKB.toFixed(2)} KB`);
+                                console.log(`📏 Compressed animated sticker size for ${senderName}: ${newFileSizeInKB.toFixed(2)} KB`);
                             }
 
                             // Read the converted file
                             const stickerBuffer = fs.readFileSync(outputPath);
 
                             // Send as sticker
-                            await sock.sendMessage(msg.key.remoteJid, {
+                            await sock.sendMessage(userId, {
                                 sticker: stickerBuffer
                             }, quoted ? { quoted: msg } : {});
 
-                            console.log('✅ Animated sticker sent successfully via !sticker command');
+                            console.log(`✅ Animated sticker sent successfully to ${senderName}`);
 
                         } catch (conversionError) {
-                            console.error('Error converting video to animated sticker:', conversionError);
-                            await sock.sendMessage(msg.key.remoteJid, {
+                            console.error(`❌ Error converting video to animated sticker for ${senderName}:`, conversionError);
+                            await sock.sendMessage(userId, {
                                 text: '❌ Sir, failed to convert video to animated sticker. The video might be too large or in an unsupported format.'
                             });
                         } finally {
@@ -389,28 +563,31 @@ Use them in chat to try them out! 👌` })
                     }
 
                 } else {
-                    await sock.sendMessage(msg.key.remoteJid, {
+                    await sock.sendMessage(userId, {
                         text: '❗ Sir. Please send an image or video/GIF with !sticker caption or reply to media with !sticker\n\n📝 Usage:\n• Send image with caption: !sticker (creates static sticker)\n• Send video/GIF with caption: !sticker (creates animated sticker)\n• Reply to image with: !sticker\n• Reply to video/GIF with: !sticker'
                     });
                 }
             } catch (error) {
-                console.error('Error creating sticker:', error);
-                await sock.sendMessage(msg.key.remoteJid, {
+                console.error(`❌ Error creating sticker for ${senderName}:`, error);
+                await sock.sendMessage(userId, {
                     text: '❌ Failed to create sticker. Please try again with a valid image or video/GIF.'
                 });
+            } finally {
+                // Remove from active processes
+                activeProcesses.delete(`${userId}_sticker`);
             }
         }
 
         // Alternative: Just detect any image and provide sticker option
         else if (msg.message?.imageMessage && !messageText) {
-            await sock.sendMessage(msg.key.remoteJid, {
+            await sock.sendMessage(userId, {
                 text: '📸 Sir I see you sent an image! Send "!sticker" to convert it to a sticker.'
             });
         }
 
         // Alternative: Just detect any video/GIF and provide sticker option  
         else if ((msg.message?.videoMessage || msg.message?.gifMessage) && !messageText) {
-            await sock.sendMessage(msg.key.remoteJid, {
+            await sock.sendMessage(userId, {
                 text: '🎬 Sir I see you sent a video/GIF! Send "!sticker" to convert it to an animated sticker.'
             });
         }
@@ -422,78 +599,80 @@ Use them in chat to try them out! 👌` })
             messageText !== '!sticker' &&
             !messageText.startsWith('!jarvis ') && !messageText.startsWith('!Jarvis ')) {
             
-            console.log(`❌ Invalid command "${messageText}", sending video GIF response...`);
+            console.log(`❌ Invalid command "${messageText}" from ${senderName}, sending video GIF response...`);
             
             try {
-                console.log('📂 Reading IRON-MAN video file...');
+                console.log(`📂 Reading IRON-MAN video file for ${senderName}...`);
                 const ironmanVideoBuffer = fs.readFileSync('./src/ironman.mp4');
                 console.log(`📏 Video file size: ${(ironmanVideoBuffer.length / 1024).toFixed(2)} KB`);
                 
                 const invalidCommandMessage = `❌ *Invalid Command: "${messageText}"*\n\n` +
                     `🤖 Sir, that command is not recognized in my database.\n\n` +
                     `📝 Type *!commands* to show all commands\n` +
-                    `⚙️ *IRON-MAN Bot v1.3.0*`;
+                    `⚙️ *IRON-MAN Bot v1.3.0*\n` +
+                    `👤 Your session: ${userSession.messageCount} messages`;
 
                 // Try multiple methods to send the video as GIF-like preview
                 try {
-                    console.log('🎬 Attempting to send video as GIF playback...');
-                    await sock.sendMessage(msg.key.remoteJid, {
+                    console.log(`🎬 Attempting to send video as GIF playback to ${senderName}...`);
+                    await sock.sendMessage(userId, {
                         video: ironmanVideoBuffer,
                         gifPlayback: true,
                         caption: invalidCommandMessage,
                         mimetype: 'video/mp4',
                         fileName: 'ironman.mp4'
                     });
-                    console.log('✅ Invalid command video sent successfully as GIF playback');
+                    console.log(`✅ Invalid command video sent successfully as GIF playback to ${senderName}`);
                 } catch (videoGifError) {
-                    console.log('⚠️ Video as GIF failed:', videoGifError.message);
+                    console.log(`⚠️ Video as GIF failed for ${senderName}:`, videoGifError.message);
                     try {
-                        console.log('🎥 Attempting to send as regular video...');
-                        await sock.sendMessage(msg.key.remoteJid, {
+                        console.log(`🎥 Attempting to send as regular video to ${senderName}...`);
+                        await sock.sendMessage(userId, {
                             video: ironmanVideoBuffer,
                             caption: invalidCommandMessage,
                             mimetype: 'video/mp4',
                             fileName: 'ironman.mp4'
                         });
-                        console.log('✅ Invalid command video sent successfully as regular video');
+                        console.log(`✅ Invalid command video sent successfully as regular video to ${senderName}`);
                     } catch (regularVideoError) {
-                        console.log('⚠️ Regular video failed:', regularVideoError.message);
+                        console.log(`⚠️ Regular video failed for ${senderName}:`, regularVideoError.message);
                         // Try sending as document
-                        console.log('📄 Attempting to send video as document...');
-                        await sock.sendMessage(msg.key.remoteJid, {
+                        console.log(`📄 Attempting to send video as document to ${senderName}...`);
+                        await sock.sendMessage(userId, {
                             document: ironmanVideoBuffer,
                             fileName: 'ironman.mp4',
                             mimetype: 'video/mp4',
                             caption: invalidCommandMessage
                         });
-                        console.log('✅ Invalid command video sent successfully as document');
+                        console.log(`✅ Invalid command video sent successfully as document to ${senderName}`);
                     }
                 }
                 
             } catch (videoError) {
-                console.error('🚨 All video methods failed:', videoError.message);
+                console.error(`🚨 All video methods failed for ${senderName}:`, videoError.message);
                 // Final fallback to static image
                 try {
-                    console.log('🖼️ Final fallback: sending static image...');
+                    console.log(`🖼️ Final fallback: sending static image to ${senderName}...`);
                     const ironmanImageBuffer = fs.readFileSync('./src/ironman.jpg');
-                    await sock.sendMessage(msg.key.remoteJid, {
+                    await sock.sendMessage(userId, {
                         image: ironmanImageBuffer,
                         caption: invalidCommandMessage,
                         mimetype: 'image/jpeg'
                     });
-                    console.log('✅ Invalid command response sent as static image fallback');
+                    console.log(`✅ Invalid command response sent as static image fallback to ${senderName}`);
                 } catch (finalError) {
-                    console.error('🚨 All fallback methods failed:', finalError.message);
+                    console.error(`🚨 All fallback methods failed for ${senderName}:`, finalError.message);
                     // Ultimate fallback - text only
-                    await sock.sendMessage(msg.key.remoteJid, { text: invalidCommandMessage });
-                    console.log('✅ Invalid command response sent as text-only (ultimate fallback)');
+                    await sock.sendMessage(userId, { text: invalidCommandMessage });
+                    console.log(`✅ Invalid command response sent as text-only (ultimate fallback) to ${senderName}`);
                 }
             }
         }
 
         // AI-powered Chat command
         if (messageText.startsWith('!jarvis ') || messageText.startsWith('!Jarvis ')) {
-            const args = messageText.substring(6).trim().split(' ');
+            const commandText = messageText.startsWith('!jarvis ') ? messageText.substring(8) : messageText.substring(8);
+            const args = commandText.trim().split(' ');
             await handleChatCommand(sock, msg, args);
         }
     });
@@ -803,10 +982,15 @@ app.get('/', async (req, res) => {
                         <p style="margin: 5px 0;">📋 <strong>!commands</strong> - Command list</p>
                         <p style="margin: 5px 0;">🎯 <strong>!sticker</strong> - Convert image/video/GIF to sticker</p>
                         <p style="margin: 5px 0;">👨‍💻 <strong>"who is pasindu"</strong> - Developer info with image</p>
+                        <p style="margin: 5px 0;">📊 <strong>!stats</strong> - Show your usage statistics</p>
                     </div>
                     <div style="margin-top: 20px; padding: 15px; background: #e8f5e8; border-radius: 10px; border-left: 4px solid #4CAF50;">
                         <p style="margin: 0; color: #2e7d32; font-weight: bold;">🗄️ Session Persistence</p>
                         <p style="margin: 5px 0 0 0; color: #388e3c; font-size: 0.9em;">Your session is safely stored in MongoDB and will persist across deployments!</p>
+                    </div>
+                    <div style="margin-top: 15px; padding: 15px; background: #e3f2fd; border-radius: 10px; border-left: 4px solid #2196F3;">
+                        <p style="margin: 0; color: #1976d2; font-weight: bold;">👥 Multi-User Support</p>
+                        <p style="margin: 5px 0 0 0; color: #1565c0; font-size: 0.9em;">Optimized for concurrent users with rate limiting and session management!</p>
                     </div>
                 </div>
             </body>
@@ -873,8 +1057,29 @@ app.get('/api/status', (req, res) => {
     res.json({
         connected: isConnected,
         hasQR: !!currentQR,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        activeUsers: userSessions.size,
+        totalUsers: userSessions.size,
+        activeProcesses: activeProcesses.size
     });
+});
+
+// API endpoint to get bot statistics
+app.get('/api/stats', (req, res) => {
+    const stats = {
+        totalUsers: userSessions.size,
+        activeProcesses: activeProcesses.size,
+        rateLimits: userRateLimits.size,
+        uptime: process.uptime(),
+        memoryUsage: process.memoryUsage(),
+        users: Array.from(userSessions.values()).map(session => ({
+            id: session.id.substring(0, 10) + '***', // Anonymize for privacy
+            messageCount: session.messageCount,
+            lastActivity: new Date(session.lastActivity).toISOString(),
+            joinedAt: new Date(session.joinedAt).toISOString()
+        }))
+    };
+    res.json(stats);
 });
 
 app.listen(PORT, () => {
