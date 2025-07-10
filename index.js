@@ -15,6 +15,180 @@ require('dotenv').config();
 // Set ffmpeg path
 ffmpeg.setFfmpegPath(ffmpegPath);
 
+// GitHub Profile Configuration
+const GITHUB_USERNAME = process.env.GITHUB_USERNAME || 'PasinduOG';
+let githubProfileCache = null;
+let githubProfileCacheTime = 0;
+const GITHUB_CACHE_DURATION = 3600000; // 1 hour cache
+
+// Dynamic GitHub Profile Fetching
+async function fetchGithubProfile(username = GITHUB_USERNAME) {
+    const now = Date.now();
+    
+    // Return cached data if still valid
+    if (githubProfileCache && (now - githubProfileCacheTime) < GITHUB_CACHE_DURATION) {
+        return githubProfileCache;
+    }
+
+    try {
+        console.log(`🔄 Fetching GitHub profile for @${username}...`);
+        const response = await axios.get(`https://api.github.com/users/${username}`, {
+            headers: {
+                'User-Agent': 'IRON-MAN-Bot/1.0'
+            },
+            timeout: 10000
+        });
+
+        if (response.status === 200) {
+            githubProfileCache = response.data;
+            githubProfileCacheTime = now;
+            console.log(`✅ GitHub profile fetched successfully for @${username}`);
+            return githubProfileCache;
+        }
+    } catch (error) {
+        console.error(`❌ Error fetching GitHub profile for @${username}:`, error.message);
+        
+        // Return fallback data if API fails
+        return {
+            login: username,
+            name: 'Pasindu Madhuwantha',
+            bio: 'Interest for Backend Programming with a deep passion for exploring and researching cutting-edge technologies',
+            company: '@KreedXDevClub',
+            location: 'Kalutara',
+            blog: 'https://pasindu.kreedx.com',
+            public_repos: 20,
+            followers: 19,
+            following: 19,
+            avatar_url: 'https://avatars.githubusercontent.com/u/126347762?v=4',
+            html_url: 'https://github.com/PasinduOG',
+            created_at: '2023-02-25T17:14:28Z',
+            updated_at: new Date().toISOString()
+        };
+    }
+}
+
+// Generate dynamic developer info from GitHub profile
+async function generateDeveloperInfo(profileData) {
+    const joinDate = new Date(profileData.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+    
+    const accountAge = Math.floor((Date.now() - new Date(profileData.created_at).getTime()) / (1000 * 60 * 60 * 24));
+    
+    return `👨‍💻 *About ${profileData.name || profileData.login}*\n\n` +
+        `${profileData.bio ? `📝 *Bio:* ${profileData.bio}\n\n` : ''}` +
+        `🌟 *Professional Background:*\n` +
+        `• Passionate Backend Developer & Technology Enthusiast\n` +
+        `• Currently learning New Technologies and Microservices\n` +
+        `• Self-taught programmer with expertise in modern web technologies\n` +
+        `• Specializes in Backend Development and API Architecture\n` +
+        `• Active open-source contributor and project creator\n\n` +
+
+        `💻 *Technical Skills:*\n` +
+        `• Core: JavaScript, Node.js, Express.js, PHP, Python, Java\n` +
+        `• Frontend: HTML, CSS, React, Vite, Bootstrap, Tailwind CSS\n` +
+        `• Backend: Node.js, Express, Spring Boot, Hibernate\n` +
+        `• Database: MySQL, MongoDB, Firebase\n` +
+        `• Tools: Git, GitHub, VS Code, Unity, WordPress\n` +
+        `• Cloud & Deployment: Heroku, MongoDB Atlas, Vercel\n\n` +
+
+        `🚀 *Notable Projects:*\n` +
+        `• IRON-MAN - Advanced WhatsApp Bot with AI & Sticker Creation\n` +
+        `• MASTER-CHIEF - WhatsApp Sticker & Command Bot\n` +
+        `• YouTube Downloader - Web application for video/audio downloads\n` +
+        `• Facebook Video Downloader - Social media content extraction tool\n` +
+        `• Express API Projects - RESTful APIs with validation & security\n` +
+        `• Microservices Architecture - Scalable backend solutions\n\n` +
+
+        `📊 *GitHub Stats (Live):*\n` +
+        `• Public Repositories: ${profileData.public_repos}\n` +
+        `• Followers: ${profileData.followers}\n` +
+        `• Following: ${profileData.following}\n` +
+        `• GitHub Member Since: ${joinDate}\n` +
+        `• Account Age: ${accountAge} days\n` +
+        `• Profile Last Updated: ${new Date(profileData.updated_at).toLocaleDateString()}\n\n` +
+
+        `🌐 *Connect & Contact:*\n` +
+        `• GitHub: @${profileData.login}\n` +
+        `• Profile URL: ${profileData.html_url}\n` +
+        `• Email: pasinduogdev@gmail.com\n` +
+        `• Discord: pasinduogdev\n` +
+        `• Facebook: pasindu.og.dev\n` +
+        `${profileData.location ? `• Location: ${profileData.location}\n` : ''}` +
+        `${profileData.blog ? `• Website: ${profileData.blog}\n` : ''}` +
+        `${profileData.company ? `• Company: ${profileData.company}\n` : ''}\n` +
+
+        `⚡ *Personal Touch:*\n` +
+        `• Quote: "I hate frontends" (Backend developer at heart!)\n` +
+        `• Passion for exploring cutting-edge technologies\n` +
+        `• Continuous learner with focus on microservices\n` +
+        `• Creator of innovative WhatsApp bot solutions\n` +
+        `• Believes in clean code and efficient architecture\n\n` +
+
+        `🎯 *Current Focus:*\n` +
+        `• Mastering MERN stack development\n` +
+        `• Exploring Java EE and Spring Boot frameworks\n` +
+        `• Building scalable microservices architecture\n` +
+        `• Contributing to open-source projects\n\n` +
+
+        `🔗 *Support & Collaboration:*\n` +
+        `• Buy Me a Coffee: buymeacoffee.com/pasinduogdev\n` +
+        `• Open to collaborations and new opportunities\n` +
+        `• Available for backend development projects\n` +
+        `• Mentoring in Node.js and API development\n\n` +
+
+        `*Built with ❤️ by ${profileData.name || profileData.login}*`;
+}
+
+// Generate fallback developer info (shorter version for text-only)
+async function generateDeveloperInfoFallback(profileData) {
+    const joinDate = new Date(profileData.created_at).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long'
+    });
+    
+    return `👨‍💻 *About ${profileData.name || profileData.login}*\n\n` +
+        `${profileData.bio ? `📝 *Bio:* ${profileData.bio}\n\n` : ''}` +
+        `🌟 *Professional Background:*\n` +
+        `• Passionate Backend Developer & Technology Enthusiast\n` +
+        `• Currently learning New Technologies and Microservices\n` +
+        `• Self-taught programmer with expertise in modern web technologies\n\n` +
+
+        `💻 *Core Skills:*\n` +
+        `• JavaScript, Node.js, Express.js, PHP, Python, Java\n` +
+        `• Frontend: React, HTML, CSS, Bootstrap, Tailwind\n` +
+        `• Database: MySQL, MongoDB, Firebase\n` +
+        `• Tools: Git, GitHub, VS Code, Unity\n\n` +
+
+        `🚀 *Notable Projects:*\n` +
+        `• IRON-MAN - Advanced WhatsApp Bot with AI Integration\n` +
+        `• MASTER-CHIEF - WhatsApp Sticker & Command Bot\n` +
+        `• YouTube & Facebook Video Downloaders\n` +
+        `• Express API Projects with RESTful architecture\n\n` +
+
+        `📊 *GitHub Stats:*\n` +
+        `• ${profileData.public_repos} Public Repos | ${profileData.followers} Followers\n` +
+        `• Member Since: ${joinDate}\n\n` +
+
+        `🌐 *Connect:*\n` +
+        `• GitHub: @${profileData.login}\n` +
+        `• Email: pasinduogdev@gmail.com\n` +
+        `• Discord: pasinduogdev\n` +
+        `• Facebook: pasindu.og.dev\n` +
+        `${profileData.location ? `• Location: ${profileData.location}\n` : ''}` +
+        `${profileData.blog ? `• Website: ${profileData.blog}\n` : ''}\n` +
+
+        `⚡ *Fun Fact:* "I hate frontends" (Backend developer at heart!)\n\n` +
+
+        `🔗 *Support:* buymeacoffee.com/pasinduogdev\n\n` +
+
+        `*Built with ❤️ by ${profileData.name || profileData.login}*`;
+}
+
+// ...existing code...
+
 const welcomeMessage = "Hello!... I'm Jarvis. How can I assist you today?...😊";
 const greetingMessge = "At your service, sir";
 
@@ -324,12 +498,7 @@ Use them in chat to try them out! 👌` })
             });
         }
 
-        // Enhanced regex pattern for developer info queries
-        // Matches: "who is pasindu", "who is madhuwantha", "who is og", "who is pasinduog",
-        // "tell me about pasindu", "about pasindu madhuwantha", "what about og", etc.
-        const developerInfoPattern = /(?:who\s+is|tell\s+me\s+about|about|what\s+about)\s+(?:pasindu(?:\s+madhuwantha)?|madhuwantha|og|pasinduog|the\s+developer|creator|owner|dev)/i;
-
-        if (developerInfoPattern.test(messageText)) {
+        if (messageText.startsWith('!aboutdev')) {
             console.log(`👨‍💻 Developer info requested by ${senderName} (Session: ${userSession.messageCount})`);
 
             // Enhanced check to prevent responding to bot's own captions and messages
@@ -351,11 +520,16 @@ Use them in chat to try them out! 👌` })
             }
 
             try {
-                // Try to load developer image from GitHub avatar URL
+                // Fetch live GitHub profile data
+                console.log(`🔄 Fetching live GitHub profile data for ${senderName}...`);
+                const githubProfile = await fetchGithubProfile();
+                
                 let developerImageBuffer;
+                
                 try {
                     console.log(`📥 Downloading developer image for user ${senderName}...`);
-                    const response = await axios.get('https://avatars.githubusercontent.com/u/126347762?v=4', {
+                    // Use GitHub avatar from profile data
+                    const response = await axios.get(githubProfile.avatar_url, {
                         responseType: 'arraybuffer',
                         timeout: 10000, // 10 second timeout
                         headers: {
@@ -371,53 +545,8 @@ Use them in chat to try them out! 👌` })
                     developerImageBuffer = fs.readFileSync('./src/ironman.jpg');
                 }
 
-                const developerInfo = `👨‍💻 *About Pasindu Madhuwantha (PasinduOG)*\n\n` +
-                    `🌟 *Professional Background:*\n` +
-                    `• Passionate Backend Developer & Technology Enthusiast\n` +
-                    `• Remote Worker with expertise in modern web technologies\n` +
-                    `• Self-taught programmer continuously learning new technologies\n` +
-                    `• Specializes in Microservices and Backend Architecture\n\n` +
-
-                    `💻 *Technical Skills:*\n` +
-                    `• Languages: JavaScript, Node.js, Python, HTML, CSS\n` +
-                    `• Backend Development & API Design\n` +
-                    `• Database Management (MySQL, MongoDB)\n` +
-                    `• Modern Web Technologies & Frameworks\n` +
-                    `• Microservices Architecture & WhatsApp Bot Development\n\n` +
-
-                    `🚀 *Notable Projects:*\n` +
-                    `• IRON-MAN - Advanced WhatsApp Sticker & Animation Bot\n` +
-                    `• MASTER-CHIEF - Advanced WhatsApp Sticker & Command Bot\n` +
-                    `• YouTube Downloader - Web app for video/audio downloads\n` +
-                    `• Express API Projects - Various REST APIs with validation\n` +
-                    `• Facebook Video Downloader - Social media content tool\n\n` +
-
-                    `📊 *GitHub Activity:*\n` +
-                    `• 425+ contributions in the last year\n` +
-                    `• 18+ public repositories\n` +
-                    `• Active in open-source development\n` +
-                    `• Achievements: Quickdraw, YOLO, Pull Shark\n\n` +
-
-                    `🌐 *Connect & Contact:*\n` +
-                    `• GitHub: @PasinduOG\n` +
-                    `• Email: pasinduogdev@gmail.com\n` +
-                    `• Location: Kalutara, Sri Lanka\n` +
-                    `• Social Media: Facebook, YouTube, Discord\n\n` +
-
-                    `⚡ *Fun Facts:*\n` +
-                    `• Quote: "I hate frontends" (Backend developer at heart!)\n` +
-                    `• Always exploring cutting-edge technologies\n` +
-                    `• Believes in continuous learning and innovation\n` +
-                    `• Founder and Lead Developer of @KreedXDevClub\n\n` +
-
-                    `💡 *Philosophy:*\n` +
-                    `"Interest for Backend Programming with a deep passion for exploring and researching cutting-edge technologies"\n\n` +
-
-                    `🔗 *Support:*\n` +
-                    `• Buy Me a Coffee: buymeacoffee.com/pasinduogdev\n` +
-                    `• Open to collaborations and new opportunities!\n\n` +
-
-                    `*Built with ❤️ by Pasindu Madhuwantha*`;
+                // Generate dynamic developer info from live GitHub data
+                const developerInfo = await generateDeveloperInfo(githubProfile);
 
                 // Send developer info with image preview
                 await sock.sendMessage(userId, {
@@ -425,22 +554,37 @@ Use them in chat to try them out! 👌` })
                     caption: developerInfo
                 });
 
-                console.log(`✅ Developer info sent successfully to ${senderName} with image preview`);
+                console.log(`✅ Developer info sent successfully to ${senderName} with image preview (Live GitHub data)`);
             } catch (error) {
                 console.error(`❌ Error sending developer info to ${senderName}:`, error);
 
-                // Fallback: Send text-only developer info if image fails
-                const developerInfoText = `👨‍💻 *About Pasindu Madhuwantha (PasinduOG)*\n\n` +
-                    `🌟 Backend Developer & Technology Enthusiast\n` +
-                    `💻 Expert in Node.js, JavaScript, MongoDB\n` +
-                    `🚀 Creator of IRON-MAN WhatsApp Bot\n` +
-                    `🌐 GitHub: @PasinduOG\n` +
-                    `📧 Email: pasinduogdev@gmail.com\n\n` +
-                    `*Built with ❤️ by Pasindu Madhuwantha*`;
+                try {
+                    // Fallback: Try to get GitHub profile and send text-only
+                    const githubProfile = await fetchGithubProfile();
+                    const developerInfoText = await generateDeveloperInfoFallback(githubProfile);
 
-                await sock.sendMessage(userId, {
-                    text: developerInfoText
-                });
+                    await sock.sendMessage(userId, {
+                        text: developerInfoText
+                    });
+                    
+                    console.log(`✅ Developer info sent successfully to ${senderName} (text-only fallback with live GitHub data)`);
+                } catch (fallbackError) {
+                    console.error(`❌ Complete fallback failed for ${senderName}:`, fallbackError);
+                    
+                    // Final fallback with basic info
+                    const basicInfo = `👨‍💻 *About Pasindu Madhuwantha (PasinduOG)*\n\n` +
+                        `🌟 Backend Developer & Technology Enthusiast\n` +
+                        `💻 Expertise: JavaScript, Node.js, Express.js, PHP, Python\n` +
+                        `🚀 Creator of IRON-MAN WhatsApp Bot\n` +
+                        `🌐 GitHub: @PasinduOG\n` +
+                        `📧 Email: pasinduogdev@gmail.com\n\n` +
+                        `⚡ "I hate frontends" (Backend developer at heart!)\n\n` +
+                        `*Built with ❤️ by Pasindu Madhuwantha*`;
+
+                    await sock.sendMessage(userId, {
+                        text: basicInfo
+                    });
+                }
             }
         }
 
@@ -981,7 +1125,7 @@ app.get('/', async (req, res) => {
                         <p style="margin: 5px 0;">❓ <strong>!help</strong> - Bot help center</p>
                         <p style="margin: 5px 0;">📋 <strong>!commands</strong> - Command list</p>
                         <p style="margin: 5px 0;">🎯 <strong>!sticker</strong> - Convert image/video/GIF to sticker</p>
-                        <p style="margin: 5px 0;">👨‍💻 <strong>"who is pasindu"</strong> - Developer info with image</p>
+                        <p style="margin: 5px 0;">👨‍💻 <strong>!aboutdev</strong> - Live GitHub developer info with image</p>
                         <p style="margin: 5px 0;">📊 <strong>!stats</strong> - Show your usage statistics</p>
                     </div>
                     <div style="margin-top: 20px; padding: 15px; background: #e8f5e8; border-radius: 10px; border-left: 4px solid #4CAF50;">
