@@ -15,6 +15,9 @@ require('dotenv').config();
 // Set ffmpeg path
 ffmpeg.setFfmpegPath(ffmpegPath);
 
+// Bot startup time tracking
+const startTime = Date.now();
+
 // GitHub Profile Configuration
 const GITHUB_USERNAME = process.env.GITHUB_USERNAME || 'PasinduOG';
 let githubProfileCache = null;
@@ -446,10 +449,23 @@ async function startBot() {
                 image: imageBuffer,
                 caption: `🤖 *IRON-MAN Bot Help Center*
 
-Available Commands:
+📋 *Primary Commands:*
 - *!commands* : List all commands
+- *!help* : Show this help center
 - *!sticker* : Convert image/video/GIF to sticker
 - *!jarvis <prompt>* : Get AI-powered responses
+- *!aboutdev* : Live GitHub developer info with image
+- *!stats* : Show your usage statistics
+
+🔧 *Quick Commands:*
+- *!ping* : Check bot status
+- *!info* : Bot information
+- *!menu* : Welcome menu
+- *!status* : Bot uptime and status
+
+💬 *Natural Language:*
+- hi, hello, hey : Casual Jarvis greeting
+- jarvis : Formal greeting
 
 ⚙️ Bot created by *Pasindu OG Dev*
 📌 Version: 1.3.0
@@ -459,14 +475,25 @@ Available Commands:
 
         if (messageText === '!commands') {
             await sock.sendMessage(userId, {
-                text: `📝 Available Commands:
-- hi, hello, hey : Casual Jarvis greeting
-- jarvis : Formal greeting  
+                text: `📝 *All Available Commands:*
+
+📋 *Primary Commands:*
 - !commands : Show all commands
-- !help : Get help info
+- !help : Get help info with image
 - !sticker : Convert image/video/GIF to sticker
 - !jarvis <prompt> : Get AI-powered responses
+- !aboutdev : Live GitHub developer info with image
 - !stats : Show your usage statistics
+
+🔧 *Quick Commands:*
+- !ping, !test, !alive : Check bot status
+- !info, !about, !version : Bot information
+- !menu, !start : Welcome menu
+- !bot, !uptime, !status : Bot uptime and status
+
+💬 *Natural Language:*
+- hi, hello, hey : Casual Jarvis greeting
+- jarvis : Formal greeting
 
 👤 Your session: ${userSession.messageCount} messages
 Use them in chat to try them out! 👌` })
@@ -741,6 +768,19 @@ Use them in chat to try them out! 👌` })
             messageText !== '!commands' && 
             messageText !== '!help' && 
             messageText !== '!sticker' &&
+            messageText !== '!aboutdev' &&
+            messageText !== '!stats' &&
+            messageText !== '!ping' &&
+            messageText !== '!test' &&
+            messageText !== '!info' &&
+            messageText !== '!about' &&
+            messageText !== '!version' &&
+            messageText !== '!menu' &&
+            messageText !== '!start' &&
+            messageText !== '!bot' &&
+            messageText !== '!alive' &&
+            messageText !== '!uptime' &&
+            messageText !== '!status' &&
             !messageText.startsWith('!jarvis ') && !messageText.startsWith('!Jarvis ')) {
             
             console.log(`❌ Invalid command "${messageText}" from ${senderName}, sending video GIF response...`);
@@ -818,6 +858,63 @@ Use them in chat to try them out! 👌` })
             const commandText = messageText.startsWith('!jarvis ') ? messageText.substring(8) : messageText.substring(8);
             const args = commandText.trim().split(' ');
             await handleChatCommand(sock, msg, args);
+        }
+
+        // Common command redirects - Handle commands users might expect
+        if (messageText === '!ping' || messageText === '!test' || messageText === '!alive') {
+            await sock.sendMessage(userId, {
+                text: `🏓 *Pong!* Bot is alive and running!\n\n` +
+                    `⚡ Response time: ${Date.now() - userSession.lastActivity}ms\n` +
+                    `🤖 Status: Online\n` +
+                    `📊 Type *!stats* for detailed statistics\n` +
+                    `📝 Type *!commands* for all available commands`
+            });
+        }
+
+        if (messageText === '!info' || messageText === '!about' || messageText === '!version') {
+            await sock.sendMessage(userId, {
+                text: `🤖 *IRON-MAN Bot Information*\n\n` +
+                    `🔥 Version: 1.3.0\n` +
+                    `👨‍💻 Developer: Pasindu Madhuwantha (PasinduOG)\n` +
+                    `⚙️ Built with: Node.js, Baileys, MongoDB\n` +
+                    `🌟 Features: AI Chat, Sticker Creation, Session Persistence\n\n` +
+                    `📝 Type *!help* for detailed help\n` +
+                    `👨‍💻 Type *!aboutdev* for developer info with GitHub data`
+            });
+        }
+
+        if (messageText === '!menu' || messageText === '!start') {
+            await sock.sendMessage(userId, {
+                text: `🤖 *Welcome to IRON-MAN Bot!*\n\n` +
+                    `Hi ${senderName}! I'm your AI-powered WhatsApp assistant.\n\n` +
+                    `📋 Type *!commands* to see all available commands\n` +
+                    `❓ Type *!help* for detailed help and instructions\n` +
+                    `🧠 Try *!jarvis <your question>* for AI-powered responses\n\n` +
+                    `Let's get started! 🚀`
+            });
+        }
+
+        if (messageText === '!bot' || messageText === '!uptime' || messageText === '!status') {
+            const uptimeSeconds = Math.floor((Date.now() - startTime) / 1000);
+            const uptimeMinutes = Math.floor(uptimeSeconds / 60);
+            const uptimeHours = Math.floor(uptimeMinutes / 60);
+            const uptimeDays = Math.floor(uptimeHours / 24);
+
+            let uptimeText = '';
+            if (uptimeDays > 0) uptimeText += `${uptimeDays}d `;
+            if (uptimeHours % 24 > 0) uptimeText += `${uptimeHours % 24}h `;
+            if (uptimeMinutes % 60 > 0) uptimeText += `${uptimeMinutes % 60}m `;
+            uptimeText += `${uptimeSeconds % 60}s`;
+
+            await sock.sendMessage(userId, {
+                text: `🤖 *Bot Status Report*\n\n` +
+                    `✅ Status: Online & Active\n` +
+                    `⏰ Uptime: ${uptimeText}\n` +
+                    `👥 Active users: ${userSessions.size}\n` +
+                    `⚙️ Active processes: ${activeProcesses.size}\n` +
+                    `🔄 Your session: ${userSession.messageCount} messages\n\n` +
+                    `📊 Type *!stats* for your personal statistics`
+            });
         }
     });
 
@@ -1119,14 +1216,23 @@ app.get('/', async (req, res) => {
                     <p>Your WhatsApp bot is now online and ready to receive messages.</p>
                     <p><strong>Available Commands:</strong></p>
                     <div style="text-align: left; background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0;">
-                        <p style="margin: 5px 0;">💬 <strong>hi, hello, hey</strong> - Jarvis greeting</p>
-                        <p style="margin: 5px 0;">🤵 <strong>jarvis</strong> - Formal greeting</p>
-                        <p style="margin: 5px 0;">🧠 <strong>!jarvis <prompt></strong> - Get AI-powered responses</p>
-                        <p style="margin: 5px 0;">❓ <strong>!help</strong> - Bot help center</p>
-                        <p style="margin: 5px 0;">📋 <strong>!commands</strong> - Command list</p>
+                        <p style="margin: 5px 0; font-weight: bold; color: #333;">� Primary Commands:</p>
+                        <p style="margin: 5px 0;">🧠 <strong>!jarvis &lt;prompt&gt;</strong> - Get AI-powered responses</p>
                         <p style="margin: 5px 0;">🎯 <strong>!sticker</strong> - Convert image/video/GIF to sticker</p>
                         <p style="margin: 5px 0;">👨‍💻 <strong>!aboutdev</strong> - Live GitHub developer info with image</p>
+                        <p style="margin: 5px 0;">❓ <strong>!help</strong> - Bot help center</p>
+                        <p style="margin: 5px 0;">📋 <strong>!commands</strong> - Command list</p>
                         <p style="margin: 5px 0;">📊 <strong>!stats</strong> - Show your usage statistics</p>
+                        
+                        <p style="margin: 15px 0 5px 0; font-weight: bold; color: #333;">🔧 Quick Commands:</p>
+                        <p style="margin: 5px 0;">🏓 <strong>!ping, !test, !alive</strong> - Check bot status</p>
+                        <p style="margin: 5px 0;">ℹ️ <strong>!info, !about, !version</strong> - Bot information</p>
+                        <p style="margin: 5px 0;">🚀 <strong>!menu, !start</strong> - Welcome menu</p>
+                        <p style="margin: 5px 0;">⏰ <strong>!bot, !uptime, !status</strong> - Bot uptime and status</p>
+                        
+                        <p style="margin: 15px 0 5px 0; font-weight: bold; color: #333;">💬 Natural Language:</p>
+                        <p style="margin: 5px 0;">👋 <strong>hi, hello, hey</strong> - Jarvis greeting</p>
+                        <p style="margin: 5px 0;">🤵 <strong>jarvis</strong> - Formal greeting</p>
                     </div>
                     <div style="margin-top: 20px; padding: 15px; background: #e8f5e8; border-radius: 10px; border-left: 4px solid #4CAF50;">
                         <p style="margin: 0; color: #2e7d32; font-weight: bold;">🗄️ Session Persistence</p>
