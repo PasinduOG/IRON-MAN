@@ -1,5 +1,6 @@
 const { default: makeWASocket, DisconnectReason, fetchLatestBaileysVersion, downloadContentFromMessage } = require("@whiskeysockets/baileys");
 const { useMongoDBAuthState } = require('./mongoAuth');
+const { getMemory, updateMemory, clearOldMemory, getMemoryStats, clearAllMemory, buildConversationContext } = require('./memoryManager');
 const qrcode = require('qrcode-terminal');
 const QRCode = require('qrcode');
 const Pino = require('pino');
@@ -190,8 +191,6 @@ async function generateDeveloperInfoFallback(profileData) {
         `*Built with ❤️ by ${profileData.name || profileData.login}*`;
 }
 
-// ...existing code...
-
 const welcomeMessage = "Hello!... I'm Jarvis. How can I assist you today?...😊";
 const greetingMessge = "At your service, sir";
 
@@ -286,9 +285,10 @@ function cleanupInactiveSessions() {
 // Run cleanup every 10 minutes
 setInterval(cleanupInactiveSessions, 10 * 60 * 1000);
 
-// Enhanced AI Chat Handler with better multi-user support
+// Enhanced AI Chat Handler with MongoDB memory integration
 async function handleChatCommand(client, msg, args) {
     const userId = msg.key.remoteJid;
+    const userNumber = userId.split('@')[0]; // Extract phone number from WhatsApp ID
     const prompt = args.join(" ");
     
     if (!prompt) return client.sendMessage(userId, { text: "❌ Usage: !jarvis <prompt>" });
@@ -314,18 +314,40 @@ async function handleChatCommand(client, msg, args) {
         // Send thinking message
         await client.sendMessage(userId, { text: "🤖 Thinking..." });
 
+        // Retrieve user's conversation memory
+        const memory = await getMemory(userNumber);
+        
+        // Build conversation context with memory
+        const conversationContext = buildConversationContext(memory, prompt);
+        
+        console.log(`🧠 Using ${memory.length} previous messages for context (User: ${userNumber})`);
+
         const res = await axios.post(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-            { contents: [{ parts: [{ text: prompt }] }] },
+            { 
+                contents: [{ 
+                    parts: [{ 
+                        text: conversationContext 
+                    }] 
+                }] 
+            },
             { timeout: 30000 } // 30 second timeout
         );
 
         const aiReply = res.data.candidates?.[0]?.content?.parts?.[0]?.text || "🤖 No response.";
+        
+        // Send response to user
         await client.sendMessage(userId, {
             text: `🤖 *Jarvis Response:*\n\n${aiReply}`
         });
         
-        console.log(`✅ AI response sent to user ${session.id} (Message #${session.messageCount})`);
+        // Update memory with both user message and AI reply
+        await updateMemory(userNumber, prompt, aiReply);
+        
+        // Clear old memory to maintain only latest 10 messages
+        await clearOldMemory(userNumber, 10);
+        
+        console.log(`✅ AI response sent to user ${session.id} (Message #${session.messageCount}) with memory updated`);
         
     } catch (err) {
         console.error(`❌ Gemini error for user ${userId}:`, err.message);
@@ -453,9 +475,14 @@ async function startBot() {
 - *!commands* : List all commands
 - *!help* : Show this help center
 - *!sticker* : Convert image/video/GIF to sticker
-- *!jarvis <prompt>* : Get AI-powered responses
+- *!jarvis <prompt>* : Get AI-powered responses with memory
 - *!aboutdev* : Live GitHub developer info with image
 - *!stats* : Show your usage statistics
+
+🧠 *Memory Management:*
+- *!memory* : Show your conversation memory stats
+- *!forgetme* : Clear all your conversation memory
+- *!clearcontext* : Clear conversation context (same as forgetme)
 
 🔧 *Quick Commands:*
 - *!ping* : Check bot status
@@ -468,7 +495,7 @@ async function startBot() {
 - jarvis : Formal greeting
 
 ⚙️ Bot created by *Pasindu OG Dev*
-📌 Version: 1.3.0
+📌 Version: 1.3.0 (with AI Memory)
 👤 Session: ${userSession.messageCount} messages`
             });
         }
@@ -481,9 +508,14 @@ async function startBot() {
 - !commands : Show all commands
 - !help : Get help info with image
 - !sticker : Convert image/video/GIF to sticker
-- !jarvis <prompt> : Get AI-powered responses
+- !jarvis <prompt> : Get AI-powered responses with memory
 - !aboutdev : Live GitHub developer info with image
 - !stats : Show your usage statistics
+
+🧠 *Memory Management:*
+- !memory : Show your conversation memory stats
+- !forgetme : Clear all your conversation memory
+- !clearcontext : Clear conversation context (same as forgetme)
 
 🔧 *Quick Commands:*
 - !ping, !test, !alive : Check bot status
@@ -496,12 +528,17 @@ async function startBot() {
 - jarvis : Formal greeting
 
 👤 Your session: ${userSession.messageCount} messages
+🧠 AI Memory: Enabled for personalized conversations
 Use them in chat to try them out! 👌` })
         }
 
         if (messageText === '!stats') {
             const joinedAgo = Math.floor((Date.now() - userSession.joinedAt) / 1000 / 60); // minutes
             const lastActiveAgo = Math.floor((Date.now() - userSession.lastActivity) / 1000); // seconds
+            const userNumber = userId.split('@')[0];
+            
+            // Get memory stats
+            const memoryStats = await getMemoryStats(userNumber);
             
             await sock.sendMessage(userId, {
                 text: `📊 *Your Bot Statistics*
@@ -510,6 +547,12 @@ Use them in chat to try them out! 👌` })
 • Messages sent: ${userSession.messageCount}
 • Joined: ${joinedAgo} minutes ago
 • Last active: ${lastActiveAgo} seconds ago
+
+🧠 *AI Memory Stats:*
+• Total messages in memory: ${memoryStats.totalMessages}
+• Your messages: ${memoryStats.userMessages}
+• AI responses: ${memoryStats.aiMessages}
+• Last memory update: ${memoryStats.lastUpdated ? new Date(memoryStats.lastUpdated).toLocaleString() : 'Never'}
 
 🤖 *Bot Status:*
 • Total active users: ${userSessions.size}
@@ -521,7 +564,7 @@ Use them in chat to try them out! 👌` })
 • AI requests: Available  
 • Sticker creation: Available
 
-🎯 Keep chatting with IRON-MAN Bot!`
+🎯 Keep chatting with IRON-MAN Bot for smarter AI conversations!`
             });
         }
 
@@ -770,6 +813,9 @@ Use them in chat to try them out! 👌` })
             messageText !== '!sticker' &&
             messageText !== '!aboutdev' &&
             messageText !== '!stats' &&
+            messageText !== '!memory' &&
+            messageText !== '!forgetme' &&
+            messageText !== '!clearcontext' &&
             messageText !== '!ping' &&
             messageText !== '!test' &&
             messageText !== '!info' &&
@@ -874,10 +920,10 @@ Use them in chat to try them out! 👌` })
         if (messageText === '!info' || messageText === '!about' || messageText === '!version') {
             await sock.sendMessage(userId, {
                 text: `🤖 *IRON-MAN Bot Information*\n\n` +
-                    `🔥 Version: 1.3.0\n` +
+                    `🔥 Version: 1.3.0 (with AI Memory)\n` +
                     `👨‍💻 Developer: Pasindu Madhuwantha (PasinduOG)\n` +
                     `⚙️ Built with: Node.js, Baileys, MongoDB\n` +
-                    `🌟 Features: AI Chat, Sticker Creation, Session Persistence\n\n` +
+                    `🌟 Features: AI Chat with Memory, Sticker Creation, Session Persistence\n\n` +
                     `📝 Type *!help* for detailed help\n` +
                     `👨‍💻 Type *!aboutdev* for developer info with GitHub data`
             });
@@ -915,6 +961,66 @@ Use them in chat to try them out! 👌` })
                     `🔄 Your session: ${userSession.messageCount} messages\n\n` +
                     `📊 Type *!stats* for your personal statistics`
             });
+        }
+
+        // Memory management commands
+        if (messageText === '!memory') {
+            const userNumber = userId.split('@')[0];
+            const memoryStats = await getMemoryStats(userNumber);
+            
+            if (memoryStats.totalMessages > 0) {
+                await sock.sendMessage(userId, {
+                    text: `🧠 *Your AI Memory Statistics*
+
+📊 *Memory Overview:*
+• Total messages: ${memoryStats.totalMessages}
+• Your messages: ${memoryStats.userMessages}  
+• AI responses: ${memoryStats.aiMessages}
+
+📅 *Timeline:*
+• First message: ${memoryStats.oldestMessage ? new Date(memoryStats.oldestMessage).toLocaleString() : 'N/A'}
+• Latest message: ${memoryStats.newestMessage ? new Date(memoryStats.newestMessage).toLocaleString() : 'N/A'}
+• Last updated: ${memoryStats.lastUpdated ? new Date(memoryStats.lastUpdated).toLocaleString() : 'Never'}
+
+💡 *How it works:*
+• I remember our last 10 conversation exchanges
+• This helps me provide more personalized responses
+• Use *!forgetme* to clear your memory if needed
+
+🤖 Keep chatting to build better AI conversations!`
+                });
+            } else {
+                await sock.sendMessage(userId, {
+                    text: `🧠 *Your AI Memory*
+
+📊 No conversation history found yet.
+
+💡 Start chatting with *!jarvis <your message>* to build memory!
+The AI will remember your last 10 conversation exchanges for more personalized responses.`
+                });
+            }
+        }
+
+        if (messageText === '!forgetme' || messageText === '!clearcontext') {
+            const userNumber = userId.split('@')[0];
+            
+            try {
+                await clearAllMemory(userNumber);
+                await sock.sendMessage(userId, {
+                    text: `🧠 *Memory Cleared Successfully*
+
+✅ All your conversation memory has been cleared.
+🔄 Future AI conversations will start fresh.
+💡 Use *!jarvis <message>* to start building new memory.
+
+Your session statistics and other data remain unchanged.`
+                });
+            } catch (error) {
+                console.error(`❌ Error clearing memory for ${userNumber}:`, error);
+                await sock.sendMessage(userId, {
+                    text: '❌ Failed to clear memory. Please try again later.'
+                });
+            }
         }
     });
 
@@ -1224,23 +1330,34 @@ app.get('/', async (req, res) => {
                         <p style="margin: 5px 0;">📋 <strong>!commands</strong> - Command list</p>
                         <p style="margin: 5px 0;">📊 <strong>!stats</strong> - Show your usage statistics</p>
                         
+                        <p style="margin: 15px 0 5px 0; font-weight: bold; color: #333;">🧠 Memory Management:</p>
+                        <p style="margin: 5px 0;">📊 <strong>!memory</strong> - Show your conversation memory stats</p>
+                        <p style="margin: 5px 0;">🗑️ <strong>!forgetme</strong> - Clear all your conversation memory</p>
+                        <p style="margin: 5px 0;">🔄 <strong>!clearcontext</strong> - Clear conversation context (same as forgetme)</p>
+                        
                         <p style="margin: 15px 0 5px 0; font-weight: bold; color: #333;">🔧 Quick Commands:</p>
                         <p style="margin: 5px 0;">🏓 <strong>!ping, !test, !alive</strong> - Check bot status</p>
                         <p style="margin: 5px 0;">ℹ️ <strong>!info, !about, !version</strong> - Bot information</p>
                         <p style="margin: 5px 0;">🚀 <strong>!menu, !start</strong> - Welcome menu</p>
                         <p style="margin: 5px 0;">⏰ <strong>!bot, !uptime, !status</strong> - Bot uptime and status</p>
                         
-                        <p style="margin: 15px 0 5px 0; font-weight: bold; color: #333;">💬 Natural Language:</p>
-                        <p style="margin: 5px 0;">👋 <strong>hi, hello, hey</strong> - Jarvis greeting</p>
-                        <p style="margin: 5px 0;">🤵 <strong>jarvis</strong> - Formal greeting</p>
-                    </div>
-                    <div style="margin-top: 20px; padding: 15px; background: #e8f5e8; border-radius: 10px; border-left: 4px solid #4CAF50;">
-                        <p style="margin: 0; color: #2e7d32; font-weight: bold;">🗄️ Session Persistence</p>
-                        <p style="margin: 5px 0 0 0; color: #388e3c; font-size: 0.9em;">Your session is safely stored in MongoDB and will persist across deployments!</p>
-                    </div>
-                    <div style="margin-top: 15px; padding: 15px; background: #e3f2fd; border-radius: 10px; border-left: 4px solid #2196F3;">
-                        <p style="margin: 0; color: #1976d2; font-weight: bold;">👥 Multi-User Support</p>
-                        <p style="margin: 5px 0 0 0; color: #1565c0; font-size: 0.9em;">Optimized for concurrent users with rate limiting and session management!</p>
+                        <p style="margin: 15px 0 5px 0; font-weight: bold; color: #333;">🧠 Memory Management:</p>
+                        <p style="margin: 5px 0;">📊 <strong>!memory</strong> - Show your conversation memory stats</p>
+                        <p style="margin: 5px 0;">🗑️ <strong>!forgetme</strong> - Clear all your conversation memory</p>
+                        <p style="margin: 5px 0;">🧹 <strong>!clearcontext</strong> - Clear conversation context (same as forgetme)</p>
+                        
+                        <p style="margin-top: 20px; padding: 15px; background: #e8f5e8; border-radius: 10px; border-left: 4px solid #4CAF50;">
+                            <span style="font-weight: bold; color: #2e7d32;">🧠 AI Memory System</span><br>
+                            Conversations are now remembered for personalized AI responses with 10-message context!
+                        </p>
+                        <p style="margin-top: 15px; padding: 15px; background: #e8f5e8; border-radius: 10px; border-left: 4px solid #4CAF50;">
+                            <span style="font-weight: bold; color: #2e7d32;">🗄️ Session Persistence</span><br>
+                            Your session is safely stored in MongoDB and will persist across deployments!
+                        </p>
+                        <p style="margin-top: 15px; padding: 15px; background: #e3f2fd; border-radius: 10px; border-left: 4px solid #2196F3;">
+                            <span style="font-weight: bold; color: #1976d2;">👥 Multi-User Support</span><br>
+                            Optimized for concurrent users with rate limiting and session management!
+                        </p>
                     </div>
                 </div>
             </body>

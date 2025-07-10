@@ -1,6 +1,6 @@
-# IRON-MAN WhatsApp Bot v1.3.0 🤖
+# IRON-MAN WhatsApp Bot v1.3.0 (with AI Memory) 🤖
 
-A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, advanced sticker creation, MongoDB session persistence, Google Gemini AI integration, and beautiful web interface. **Now deployed live on Heroku with direct API implementation!**
+A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, advanced sticker creation, MongoDB session persistence, Google Gemini AI integration with conversation memory, and beautiful web interface. **Now deployed live on Heroku with AI memory management!**
 
 ## 🌐 Live Deployment
 
@@ -10,6 +10,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 - ✅ **Heroku Deployed** - Running 24/7 on Heroku cloud platform
 - ✅ **MongoDB Connected** - Persistent session storage via MongoDB Atlas
 - ✅ **AI Integration Active** - Google Gemini AI powered responses via direct API
+- ✅ **AI Memory System** - Conversation memory for personalized responses
 - ✅ **Environment Variables Set** - All configuration properly deployed
 - ✅ **Web Interface Live** - Beautiful QR code scanning interface
 - ✅ **Session Persistence** - Bot sessions survive deployments and restarts
@@ -24,18 +25,20 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 3. **Start chatting**:
    - Send `hi` for a greeting
    - Send `!ping` to test bot responsiveness
-   - Send `!jarvis what is AI?` for AI responses  
+   - Send `!jarvis what is AI?` for AI responses with memory
    - Send `!help` for all commands with image
    - Send `!commands` for organized command list
    - Send an image with `!sticker` to create stickers
    - Send `!aboutdev` for live GitHub developer info
+   - Send `!memory` to check your conversation memory
    - Send `!menu` for welcome menu
    - Send `!uptime` for bot status
 
 ### Live Deployment Features:
 - ✅ **24/7 Availability** - Always online on Heroku
-- ✅ **AI Integration** - Google Gemini AI responses via direct API calls
+- ✅ **AI Integration** - Google Gemini AI responses with conversation memory
 - ✅ **Session Persistence** - MongoDB stores your session permanently
+- ✅ **Conversation Memory** - AI remembers context from previous messages
 - ✅ **Web Interface** - Beautiful QR code scanning page
 - ✅ **All Commands** - Full feature set available
 - ✅ **Advanced Video Processing** - FFmpeg-powered animated sticker creation
@@ -44,13 +47,15 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 ## ✨ Features
 
 - 🤖 **Smart Greetings** - Responds to hi, hello, hey with Jarvis welcome message
-- 🧠 **AI-Powered Jarvis** - Google Gemini AI integration with direct API calls for intelligent responses
+- 🧠 **AI-Powered Jarvis with Memory** - Google Gemini AI integration with conversation context and personalized responses
+- 🧠 **Conversation Memory** - Remembers last 10 message exchanges for context-aware responses
 - ❓ **Enhanced Help System** - Interactive help center with IRON-MAN themed responses and comprehensive command guide
 - 🔧 **Quick Commands** - Instant status checks with `!ping`, `!info`, `!menu`, `!uptime` for better user experience
 - 🎯 **Unified Sticker Creator** - Convert images to static stickers and videos/GIFs to animated WebP stickers with single `!sticker` command
 - 👨‍💻 **Dynamic Developer Info** - Live GitHub API integration with real-time stats, avatar, and comprehensive profile via `!aboutdev` command
 - 📊 **User Statistics** - Track session activity, message counts, and bot usage with `!stats` command
 - ❌ **Smart Invalid Command Handler** - Video GIF preview response for unrecognized commands with helpful suggestions
+- 🧠 **MongoDB Memory System** - AI conversation memory with automatic cleanup and context management
 - 🗄️ **MongoDB Storage** - Persistent session storage using MongoDB Atlas with automatic reconnection
 - 🌐 **Web QR Interface** - Beautiful HTML page for easy QR code scanning with auto-refresh
 - 🔄 **Auto Reconnection** - Automatic reconnection on disconnect with retry logic
@@ -60,7 +65,6 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 - 🛡️ **Anti-Loop Protection** - Enhanced filtering to prevent infinite message loops and bot responses
 - 👥 **Multi-User Support** - Concurrent user handling with rate limiting and session management
 - 🎬 **FFmpeg Processing** - Advanced video/GIF processing with dual-stage compression
-- 🛡️ **Anti-Loop Protection** - Smart message filtering to prevent bot loops and duplicates
 - 📱 **Responsive Interface** - Beautiful web interface with auto-refresh and mobile optimization
 
 ## 🚀 Commands
@@ -73,9 +77,14 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 - **`!help`** - Get bot help center with IRON-MAN image and comprehensive info
 - **`!commands`** - Show all available commands list with organized categories
 - **`!sticker`** - Convert image/video/GIF to sticker (static or animated)
-- **`!jarvis [message]`** - Get AI-powered responses from Jarvis using Google Gemini (Direct API)
+- **`!jarvis [message]`** - Get AI-powered responses from Jarvis with conversation memory
 - **`!aboutdev`** - Get detailed developer information with live GitHub data and avatar
 - **`!stats`** - Show your bot usage statistics (messages sent, session info, rate limits)
+
+### 🧠 Memory Management Commands
+- **`!memory`** - Show your conversation memory statistics and timeline
+- **`!forgetme`** - Clear all your conversation memory and start fresh
+- **`!clearcontext`** - Clear conversation context (same as forgetme)
 
 ### 🔧 Quick Commands
 - **`!ping`**, **`!test`**, **`!alive`** - Check bot status and response time
@@ -84,11 +93,16 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 - **`!bot`**, **`!uptime`**, **`!status`** - Show detailed bot status with uptime information
 
 ### 🧠 AI Commands
-- **`!jarvis [message]`** - Get AI-powered responses from Jarvis using Google Gemini (Direct API)
+- **`!jarvis [message]`** - Get AI-powered responses from Jarvis with conversation memory
   - Example: `!jarvis what is artificial intelligence?`
   - Example: `!jarvis explain quantum computing`
   - Example: `!jarvis how do I code in JavaScript?`
-  - **Features**: Displays "🤖 Thinking..." message before response, includes Jarvis-style formatting
+  - **Features**: 
+    - Displays "🤖 Thinking..." message before response
+    - Remembers last 10 conversation exchanges for context
+    - Includes Jarvis-style formatting
+    - Personalized responses based on conversation history
+    - Automatic memory cleanup to maintain optimal performance
 
 ### 👨‍💻 Developer Info Commands
 - **`!aboutdev`** - Get detailed developer information with live GitHub data and avatar
@@ -128,19 +142,22 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 
 ## 🤖 AI Integration Details
 
-### Google Gemini Integration
+### Google Gemini Integration with Memory
 - **Model**: Gemini-2.0-flash (Latest Google AI model)
-- **Implementation**: Direct API calls (no SDK dependency)
-- **Features**: Context-aware responses, Jarvis personality, technical explanations
+- **Implementation**: Direct API calls with conversation context
+- **Memory System**: MongoDB-based conversation memory with 10-message context
+- **Features**: Context-aware responses, Jarvis personality, personalized conversations
 - **Rate Limiting**: Built-in cooldown system to prevent spam
 - **Error Handling**: Graceful fallbacks and user-friendly error messages
 
 ### AI Response Features:
 - 🧠 **Intelligent Responses** - Context-aware AI powered by Google Gemini
+- 🧠 **Conversation Memory** - Remembers last 10 exchanges for personalized responses
 - ⚡ **Fast Processing** - Direct API calls for optimal speed
 - 🎭 **Jarvis Personality** - Responses formatted in Tony Stark's Jarvis style
 - 🛡️ **Rate Limited** - 3-second cooldown between requests per user
 - 🔄 **Error Recovery** - Handles timeouts and API failures gracefully
+- 🗑️ **Memory Management** - Automatic cleanup and user-controlled memory clearing
 
 ## 📱 Multi-User & Session Management
 
@@ -148,7 +165,15 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 - **Per-User Sessions** - Individual session tracking for each user
 - **Message Counting** - Track messages sent per user
 - **Activity Monitoring** - Last activity timestamps
+- **Conversation Memory** - Individual AI memory for each user
 - **Automatic Cleanup** - Inactive sessions cleaned up after 30 minutes
+
+### Memory Management:
+- **Persistent Storage** - MongoDB stores conversation history
+- **Context Limits** - Maintains last 10 message exchanges per user
+- **Automatic Cleanup** - Old messages removed to maintain performance
+- **User Control** - Users can clear their own memory anytime
+- **Privacy Protection** - Memory isolated between users
 
 ### Rate Limiting:
 - **General Commands** - 10 requests per minute per user
@@ -158,9 +183,10 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 
 ### Command Organization:
 - **Primary Commands** - Core bot functionality (`!help`, `!sticker`, `!jarvis`, etc.)
+- **Memory Commands** - AI memory management (`!memory`, `!forgetme`, `!clearcontext`)
 - **Quick Commands** - Fast status and info checks (`!ping`, `!info`, `!uptime`)
 - **Natural Language** - Casual interactions (`hi`, `hello`, `jarvis`)
-- **Invalid Command Detection** - Recognizes 18+ valid commands to prevent false invalid responses
+- **Invalid Command Detection** - Recognizes 20+ valid commands to prevent false invalid responses
 
 ## 🛠️ Local Installation
 
@@ -322,12 +348,15 @@ GITHUB_USERNAME=PasinduOG
 
 ### Key Technical Features:
 1. **Session Management**: MongoDB-based persistent sessions survive deployments
-2. **Media Processing**: Sharp for images, FFmpeg for videos with intelligent compression
-3. **AI Integration**: Direct Gemini API calls with structured error handling
-4. **Dynamic GitHub Integration**: Real-time profile fetching with smart caching
-5. **Command System**: Regex-based command detection with natural language support
-6. **Auto-Suggestions**: Context-aware suggestions for media and invalid commands
-7. **Web Interface**: Express server with real-time QR code updates
+2. **AI Memory System**: Conversation context with 10-message rolling history per user
+3. **Media Processing**: Sharp for images, FFmpeg for videos with intelligent compression
+4. **AI Integration**: Direct Gemini API calls with conversation context and structured error handling
+5. **Dynamic GitHub Integration**: Real-time profile fetching with smart caching
+6. **Command System**: Regex-based command detection with natural language support
+7. **Auto-Suggestions**: Context-aware suggestions for media and invalid commands
+8. **Web Interface**: Express server with real-time QR code updates
+9. **Memory Management**: Automatic cleanup with user-controlled memory clearing
+10. **Context Building**: Intelligent conversation context construction for personalized AI responses
 
 ### Performance Optimizations:
 - **📊 File Size Monitoring**: Automatic compression adjustment for WhatsApp limits
@@ -335,6 +364,37 @@ GITHUB_USERNAME=PasinduOG
 - **🔄 Retry Logic**: Automatic reconnection and error recovery mechanisms
 - **📱 Mobile-First**: Optimized for mobile scanning and interaction
 - **🌐 API Rate Limiting**: GitHub API caching (1 hour) to prevent rate limits
+- **🧠 Memory Optimization**: Rolling 10-message limit per user for optimal performance
+- **🗑️ Automatic Cleanup**: Inactive sessions and old memories cleaned automatically
+
+## 🧠 AI Memory Management System
+
+### Memory Architecture:
+- **Database**: MongoDB collection `memory` for persistent storage
+- **Schema**: User number, message array (role, message, timestamp), updated timestamp
+- **Context Limit**: Maintains last 10 message exchanges per user
+- **Automatic Cleanup**: Old messages removed to maintain performance
+- **User Control**: Individual memory management commands
+
+### Memory Features:
+- **Persistent Context**: Conversation history survives bot restarts
+- **Personalized Responses**: AI uses previous conversation context
+- **Privacy Protection**: Each user has isolated memory storage
+- **Memory Statistics**: Users can view their conversation analytics
+- **Easy Management**: Simple commands to view and clear memory
+
+### Memory Commands:
+- **`!memory`**: View conversation statistics, timeline, and memory overview
+- **`!forgetme`**: Clear all conversation memory for fresh start
+- **`!clearcontext`**: Alternative command for memory clearing
+- **`!stats`**: Include memory stats in overall user statistics
+
+### How Memory Works:
+1. **Context Building**: Previous messages combined with current message
+2. **AI Processing**: Gemini receives enriched context for better responses
+3. **Memory Storage**: Both user and AI messages stored in MongoDB
+4. **Automatic Cleanup**: Maintains only latest 10 exchanges per user
+5. **User Control**: Users can clear their memory anytime for privacy
 
 ## 📋 Testing & Usage Examples
 
@@ -342,13 +402,15 @@ GITHUB_USERNAME=PasinduOG
 1. **Basic greeting**: Send `hi` in WhatsApp
 2. **Bot status**: `!ping` or `!alive` to check if bot is responsive
 3. **AI test**: `!jarvis what is artificial intelligence?`
-4. **Help**: `!help` for bot information with image
-5. **Commands list**: `!commands` for all available commands
-6. **Developer info**: `!aboutdev` for live GitHub profile with avatar
-7. **Statistics**: `!stats` for your usage stats
-8. **Bot info**: `!info` for bot version and details
-9. **Welcome menu**: `!menu` for new user welcome
-10. **Uptime**: `!uptime` for bot status and uptime
+4. **Memory check**: `!memory` to see your conversation memory stats
+5. **Help**: `!help` for bot information with image
+6. **Commands list**: `!commands` for all available commands
+7. **Developer info**: `!aboutdev` for live GitHub profile with avatar
+8. **Statistics**: `!stats` for your usage stats including memory
+9. **Bot info**: `!info` for bot version and details
+10. **Welcome menu**: `!menu` for new user welcome
+11. **Uptime**: `!uptime` for bot status and uptime
+12. **Memory management**: `!forgetme` to clear conversation memory
 
 ### Command Response Examples:
 
@@ -358,13 +420,22 @@ GITHUB_USERNAME=PasinduOG
 - **User**: `!info` → **Bot**: `🤖 *IRON-MAN Bot Information* 🔥 Version: 1.3.0`
 
 **AI Response Examples:**
-The bot uses Google Gemini AI via direct API calls to provide intelligent Jarvis-style responses:
+The bot uses Google Gemini AI with conversation memory to provide intelligent Jarvis-style responses:
 
+**First conversation:**
 **User**: `!jarvis what is the arc reactor?`
 **Jarvis**: *🤖 Jarvis Response: The arc reactor is a clean energy source...*
 
-**User**: `!jarvis explain machine learning`
-**Jarvis**: *🤖 Jarvis Response: Machine learning is a subset of artificial intelligence...*
+**Later in conversation (with memory):**
+**User**: `!jarvis how does it work?`
+**Jarvis**: *🤖 Jarvis Response: The arc reactor you asked about earlier works by...*
+
+**Memory Management Examples:**
+**User**: `!memory`
+**Bot**: *🧠 Your AI Memory Statistics - Total messages: 4, Your messages: 2, AI responses: 2*
+
+**User**: `!forgetme`
+**Bot**: *🧠 Memory Cleared Successfully - All your conversation memory has been cleared*
 
 ### Sticker Creation Examples:
 - Send any image with caption `!sticker` → Creates static sticker
@@ -376,9 +447,12 @@ The bot uses Google Gemini AI via direct API calls to provide intelligent Jarvis
 
 ## 🎯 Complete Command Reference
 
-### 📋 All Supported Commands (18 Total)
+### 📋 All Supported Commands (21 Total)
 **Primary Commands:**
 - `!help`, `!commands`, `!sticker`, `!jarvis <prompt>`, `!aboutdev`, `!stats`
+
+**Memory Management Commands:**
+- `!memory`, `!forgetme`, `!clearcontext`
 
 **Quick Status Commands:**
 - `!ping`, `!test`, `!alive`, `!bot`, `!uptime`, `!status`
@@ -393,21 +467,23 @@ The bot uses Google Gemini AI via direct API calls to provide intelligent Jarvis
 - `hi`, `hello`, `hey`, `jarvis`
 
 ### 🔍 Invalid Command Detection
-The bot intelligently recognizes all 18+ valid commands and provides helpful video responses with command suggestions for any unrecognized commands starting with `!`.
+The bot intelligently recognizes all 21+ valid commands and provides helpful video responses with command suggestions for any unrecognized commands starting with `!`.
 
 ## 🎯 Current Status
 
 ### ✅ Completed Features:
 ✅ MongoDB Session Persistence    ✅ Google Gemini AI Integration
-✅ Advanced Sticker Creation      ✅ Web QR Interface
-✅ Heroku Deployment             ✅ Multi-User Support  
-✅ Rate Limiting & Throttling    ✅ Anti-Loop Protection
-✅ Developer Info with GitHub    ✅ Smart Invalid Command Handler
-✅ FFmpeg Video Processing       ✅ Dynamic GitHub Integration
-✅ User Statistics & Analytics   ✅ Live GitHub Profile Data
-✅ Quick Status Commands         ✅ Enhanced Help System
-✅ Bot Information Commands      ✅ Uptime Monitoring
-✅ Welcome Menu System           ✅ Comprehensive Command List
+✅ AI Conversation Memory         ✅ Advanced Sticker Creation      
+✅ Web QR Interface              ✅ Heroku Deployment             
+✅ Multi-User Support            ✅ Rate Limiting & Throttling    
+✅ Anti-Loop Protection          ✅ Developer Info with GitHub    
+✅ Smart Invalid Command Handler ✅ FFmpeg Video Processing       
+✅ Dynamic GitHub Integration    ✅ User Statistics & Analytics   
+✅ Live GitHub Profile Data      ✅ Quick Status Commands         
+✅ Enhanced Help System          ✅ Bot Information Commands      
+✅ Uptime Monitoring            ✅ Welcome Menu System           
+✅ Comprehensive Command List    ✅ Memory Management Commands
+✅ Context-Aware AI Responses    ✅ Automatic Memory Cleanup
 
 ### 🚀 Future Enhancements
 
@@ -418,7 +494,9 @@ The bot intelligently recognizes all 18+ valid commands and provides helpful vid
 - 📺 YouTube video downloads
 - 🎮 Interactive games
 - 📰 News updates integration
-- 🤖 Advanced AI conversations
+- 🤖 Advanced AI personality modes
+- 📈 Extended memory analytics
+- 🔄 Memory export/import features
 
 ## 🤝 Contributing
 
