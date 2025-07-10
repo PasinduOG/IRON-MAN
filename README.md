@@ -23,10 +23,14 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 2. **Scan the QR code** with WhatsApp
 3. **Start chatting**:
    - Send `hi` for a greeting
+   - Send `!ping` to test bot responsiveness
    - Send `!jarvis what is AI?` for AI responses  
-   - Send `!help` for all commands
+   - Send `!help` for all commands with image
+   - Send `!commands` for organized command list
    - Send an image with `!sticker` to create stickers
    - Send `!aboutdev` for live GitHub developer info
+   - Send `!menu` for welcome menu
+   - Send `!uptime` for bot status
 
 ### Live Deployment Features:
 - ✅ **24/7 Availability** - Always online on Heroku
@@ -41,11 +45,12 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 
 - 🤖 **Smart Greetings** - Responds to hi, hello, hey with Jarvis welcome message
 - 🧠 **AI-Powered Jarvis** - Google Gemini AI integration with direct API calls for intelligent responses
-- ❓ **Help System** - Interactive help center with IRON-MAN themed responses and image
+- ❓ **Enhanced Help System** - Interactive help center with IRON-MAN themed responses and comprehensive command guide
+- 🔧 **Quick Commands** - Instant status checks with `!ping`, `!info`, `!menu`, `!uptime` for better user experience
 - 🎯 **Unified Sticker Creator** - Convert images to static stickers and videos/GIFs to animated WebP stickers with single `!sticker` command
 - 👨‍💻 **Dynamic Developer Info** - Live GitHub API integration with real-time stats, avatar, and comprehensive profile via `!aboutdev` command
 - 📊 **User Statistics** - Track session activity, message counts, and bot usage with `!stats` command
-- ❌ **Invalid Command Handler** - Video GIF preview response for unrecognized commands with helpful suggestions
+- ❌ **Smart Invalid Command Handler** - Video GIF preview response for unrecognized commands with helpful suggestions
 - 🗄️ **MongoDB Storage** - Persistent session storage using MongoDB Atlas with automatic reconnection
 - 🌐 **Web QR Interface** - Beautiful HTML page for easy QR code scanning with auto-refresh
 - 🔄 **Auto Reconnection** - Automatic reconnection on disconnect with retry logic
@@ -60,23 +65,32 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 
 ## 🚀 Commands
 
-### Greeting Commands
+### 💬 Natural Language Commands
 - **`hi`**, **`hello`**, **`hey`** - Get Jarvis welcome message
 - **`jarvis`** - Get formal Jarvis greeting "At your service, sir"
 
-### AI Commands
+### 📋 Primary Commands
+- **`!help`** - Get bot help center with IRON-MAN image and comprehensive info
+- **`!commands`** - Show all available commands list with organized categories
+- **`!sticker`** - Convert image/video/GIF to sticker (static or animated)
+- **`!jarvis [message]`** - Get AI-powered responses from Jarvis using Google Gemini (Direct API)
+- **`!aboutdev`** - Get detailed developer information with live GitHub data and avatar
+- **`!stats`** - Show your bot usage statistics (messages sent, session info, rate limits)
+
+### 🔧 Quick Commands
+- **`!ping`**, **`!test`**, **`!alive`** - Check bot status and response time
+- **`!info`**, **`!about`**, **`!version`** - Get bot information and version details
+- **`!menu`**, **`!start`** - Display welcome menu for new users
+- **`!bot`**, **`!uptime`**, **`!status`** - Show detailed bot status with uptime information
+
+### 🧠 AI Commands
 - **`!jarvis [message]`** - Get AI-powered responses from Jarvis using Google Gemini (Direct API)
   - Example: `!jarvis what is artificial intelligence?`
   - Example: `!jarvis explain quantum computing`
   - Example: `!jarvis how do I code in JavaScript?`
   - **Features**: Displays "🤖 Thinking..." message before response, includes Jarvis-style formatting
 
-### Help Commands
-- **`!help`** - Get bot help center with IRON-MAN image and info
-- **`!commands`** - Show all available commands list
-- **`!stats`** - Show your bot usage statistics (messages sent, session info, rate limits)
-
-### Developer Info Commands
+### 👨‍💻 Developer Info Commands
 - **`!aboutdev`** - Get detailed developer information with live GitHub data and avatar
 
 **Features:**
@@ -86,7 +100,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 - 🔄 **Fallback Image Support** - Uses local IRON-MAN image if GitHub download fails
 - ⚡ **Smart Caching** - Caches GitHub data for 1 hour to reduce API calls
 
-### Sticker Commands
+### 🎯 Sticker Commands
 - **`!sticker`** (as image caption) - Convert uploaded image to static sticker
 - **`!sticker`** (reply to image) - Convert replied image to static sticker
 - **`!sticker`** (as video/GIF caption) - Convert uploaded video/GIF to animated sticker
@@ -141,6 +155,12 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 - **AI Requests** - 3-second cooldown between AI commands
 - **Sticker Creation** - 5-second cooldown between sticker requests
 - **User-Specific** - Rate limits applied individually per user
+
+### Command Organization:
+- **Primary Commands** - Core bot functionality (`!help`, `!sticker`, `!jarvis`, etc.)
+- **Quick Commands** - Fast status and info checks (`!ping`, `!info`, `!uptime`)
+- **Natural Language** - Casual interactions (`hi`, `hello`, `jarvis`)
+- **Invalid Command Detection** - Recognizes 18+ valid commands to prevent false invalid responses
 
 ## 🛠️ Local Installation
 
@@ -320,12 +340,24 @@ GITHUB_USERNAME=PasinduOG
 
 ### Quick Test Commands:
 1. **Basic greeting**: Send `hi` in WhatsApp
-2. **AI test**: `!jarvis what is artificial intelligence?`
-3. **Help**: `!help` for bot information
-4. **Developer info**: `!aboutdev` for live GitHub profile
-5. **Statistics**: `!stats` for your usage stats
+2. **Bot status**: `!ping` or `!alive` to check if bot is responsive
+3. **AI test**: `!jarvis what is artificial intelligence?`
+4. **Help**: `!help` for bot information with image
+5. **Commands list**: `!commands` for all available commands
+6. **Developer info**: `!aboutdev` for live GitHub profile with avatar
+7. **Statistics**: `!stats` for your usage stats
+8. **Bot info**: `!info` for bot version and details
+9. **Welcome menu**: `!menu` for new user welcome
+10. **Uptime**: `!uptime` for bot status and uptime
 
-### AI Response Examples:
+### Command Response Examples:
+
+**Status Commands:**
+- **User**: `!ping` → **Bot**: `🏓 *Pong!* Bot is alive and running!`
+- **User**: `!uptime` → **Bot**: `🤖 *Bot Status Report* ✅ Status: Online & Active ⏰ Uptime: 2h 45m 30s`
+- **User**: `!info` → **Bot**: `🤖 *IRON-MAN Bot Information* 🔥 Version: 1.3.0`
+
+**AI Response Examples:**
 The bot uses Google Gemini AI via direct API calls to provide intelligent Jarvis-style responses:
 
 **User**: `!jarvis what is the arc reactor?`
@@ -339,6 +371,30 @@ The bot uses Google Gemini AI via direct API calls to provide intelligent Jarvis
 - Send any video/GIF with caption `!sticker` → Creates animated sticker  
 - Reply to any media with `!sticker` → Converts that media to sticker
 
+### Invalid Command Handling:
+- **User**: `!unknown` → **Bot**: Sends IRON-MAN video with helpful command suggestions
+
+## 🎯 Complete Command Reference
+
+### 📋 All Supported Commands (18 Total)
+**Primary Commands:**
+- `!help`, `!commands`, `!sticker`, `!jarvis <prompt>`, `!aboutdev`, `!stats`
+
+**Quick Status Commands:**
+- `!ping`, `!test`, `!alive`, `!bot`, `!uptime`, `!status`
+
+**Information Commands:**
+- `!info`, `!about`, `!version`
+
+**Navigation Commands:**
+- `!menu`, `!start`
+
+**Natural Language:**
+- `hi`, `hello`, `hey`, `jarvis`
+
+### 🔍 Invalid Command Detection
+The bot intelligently recognizes all 18+ valid commands and provides helpful video responses with command suggestions for any unrecognized commands starting with `!`.
+
 ## 🎯 Current Status
 
 ### ✅ Completed Features:
@@ -346,9 +402,12 @@ The bot uses Google Gemini AI via direct API calls to provide intelligent Jarvis
 ✅ Advanced Sticker Creation      ✅ Web QR Interface
 ✅ Heroku Deployment             ✅ Multi-User Support  
 ✅ Rate Limiting & Throttling    ✅ Anti-Loop Protection
-✅ Developer Info                ✅ Invalid Command Handler
+✅ Developer Info with GitHub    ✅ Smart Invalid Command Handler
 ✅ FFmpeg Video Processing       ✅ Dynamic GitHub Integration
-✅ User Statistics               ✅ Live GitHub Profile Data
+✅ User Statistics & Analytics   ✅ Live GitHub Profile Data
+✅ Quick Status Commands         ✅ Enhanced Help System
+✅ Bot Information Commands      ✅ Uptime Monitoring
+✅ Welcome Menu System           ✅ Comprehensive Command List
 
 ### 🚀 Future Enhancements
 
