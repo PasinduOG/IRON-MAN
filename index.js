@@ -28,7 +28,10 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'your-gemini-api-key-here';
 // Custom AI Chat Handler
 async function handleChatCommand(client, msg, args) {
     const prompt = args.join(" ");
-    if (!prompt) return client.sendMessage(msg.key.remoteJid, { text: "❌ Usage: !chat <prompt>" });
+    if (!prompt) return client.sendMessage(msg.key.remoteJid, { text: "❌ Usage: !jarvis <prompt>" });
+
+    // Send thinking message
+    await client.sendMessage(msg.key.remoteJid, { text: "🤖 Thinking..." });
 
     try {
         const res = await axios.post(
@@ -38,7 +41,7 @@ async function handleChatCommand(client, msg, args) {
 
         const aiReply = res.data.candidates?.[0]?.content?.parts?.[0]?.text || "🤖 No response.";
         await client.sendMessage(msg.key.remoteJid, {
-            text: `🤖 *AI Response:*\n\n${aiReply}`
+            text: `🤖 *Jarvis Response:*\n\n${aiReply}`
         });
     } catch (err) {
         console.error("Gemini error:", err);
@@ -139,10 +142,10 @@ async function startBot() {
 Available Commands:
 - *!commands* : List all commands
 - *!sticker* : Convert image/video/GIF to sticker
-- *!chat <your message>* : Get AI-powered responses
+- *!jarvis <prompt>* : Get AI-powered responses
 
 ⚙️ Bot created by *Pasindu OG Dev*
-📌 Version: 1.2.2`
+📌 Version: 1.3.0`
             });
         }
 
@@ -154,7 +157,7 @@ Available Commands:
 - !commands : Show all commands
 - !help : Get help info
 - !sticker : Convert image/video/GIF to sticker
-- !chat <your message> : Get AI-powered responses
+- !jarvis <prompt> : Get AI-powered responses
 
 Use them in chat to try them out! 👌` })
         }
@@ -196,7 +199,7 @@ Use them in chat to try them out! 👌` })
                         responseType: 'arraybuffer',
                         timeout: 10000, // 10 second timeout
                         headers: {
-                            'User-Agent': 'IRON-MAN-Bot/1.2.2'
+                            'User-Agent': 'IRON-MAN-Bot/1.3.0'
                         }
                     });
                     developerImageBuffer = Buffer.from(response.data);
@@ -417,7 +420,7 @@ Use them in chat to try them out! 👌` })
             messageText !== '!commands' && 
             messageText !== '!help' && 
             messageText !== '!sticker' &&
-            !messageText.startsWith('!chat ')) {
+            !messageText.startsWith('!jarvis ') && !messageText.startsWith('!Jarvis ')) {
             
             console.log(`❌ Invalid command "${messageText}", sending video GIF response...`);
             
@@ -429,7 +432,7 @@ Use them in chat to try them out! 👌` })
                 const invalidCommandMessage = `❌ *Invalid Command: "${messageText}"*\n\n` +
                     `🤖 Sir, that command is not recognized in my database.\n\n` +
                     `📝 Type *!commands* to show all commands\n` +
-                    `⚙️ *IRON-MAN Bot v1.2.2*`;
+                    `⚙️ *IRON-MAN Bot v1.3.0*`;
 
                 // Try multiple methods to send the video as GIF-like preview
                 try {
@@ -489,7 +492,7 @@ Use them in chat to try them out! 👌` })
         }
 
         // AI-powered Chat command
-        if (messageText.startsWith('!chat ')) {
+        if (messageText.startsWith('!jarvis ') || messageText.startsWith('!Jarvis ')) {
             const args = messageText.substring(6).trim().split(' ');
             await handleChatCommand(sock, msg, args);
         }
@@ -795,7 +798,7 @@ app.get('/', async (req, res) => {
                     <div style="text-align: left; background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0;">
                         <p style="margin: 5px 0;">💬 <strong>hi, hello, hey</strong> - Jarvis greeting</p>
                         <p style="margin: 5px 0;">🤵 <strong>jarvis</strong> - Formal greeting</p>
-                        <p style="margin: 5px 0;">🧠 <strong>!chat <your message></strong> - Get AI-powered responses</p>
+                        <p style="margin: 5px 0;">🧠 <strong>!jarvis <prompt></strong> - Get AI-powered responses</p>
                         <p style="margin: 5px 0;">❓ <strong>!help</strong> - Bot help center</p>
                         <p style="margin: 5px 0;">📋 <strong>!commands</strong> - Command list</p>
                         <p style="margin: 5px 0;">🎯 <strong>!sticker</strong> - Convert image/video/GIF to sticker</p>

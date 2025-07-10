@@ -1,6 +1,6 @@
-# IRON-MAN WhatsApp Bot v1.2.2 🤖
+# IRON-MAN WhatsApp Bot v1.3.0 🤖
 
-A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sticker creation, MongoDB session persistence, Google Gemini AI integration, and beautiful web interface. **Now deployed live on Heroku!**
+A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, advanced sticker creation, MongoDB session persistence, Google Gemini AI integration, and beautiful web interface. **Now deployed live on Heroku with direct API implementation!**
 
 ## 🌐 Live Deployment
 
@@ -9,10 +9,11 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 ### Deployment Status: ✅ **LIVE & OPERATIONAL**
 - ✅ **Heroku Deployed** - Running 24/7 on Heroku cloud platform
 - ✅ **MongoDB Connected** - Persistent session storage via MongoDB Atlas
-- ✅ **AI Integration Active** - Google Gemini AI powered responses
+- ✅ **AI Integration Active** - Google Gemini AI powered responses via direct API
 - ✅ **Environment Variables Set** - All configuration properly deployed
 - ✅ **Web Interface Live** - Beautiful QR code scanning interface
 - ✅ **Session Persistence** - Bot sessions survive deployments and restarts
+- ✅ **Advanced Processing** - Enhanced sticker creation with FFmpeg optimization
 
 ## 🎯 Quick Start (Live Bot)
 
@@ -22,32 +23,38 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 2. **Scan the QR code** with WhatsApp
 3. **Start chatting**:
    - Send `hi` for a greeting
-   - Send `!jarvis what is AI?` for AI responses
+   - Send `!jarvis what is AI?` for AI responses  
    - Send `!help` for all commands
    - Send an image with `!sticker` to create stickers
+   - Ask `who is pasindu` for developer info
 
 ### Live Deployment Features:
 - ✅ **24/7 Availability** - Always online on Heroku
-- ✅ **AI Integration** - Google Gemini AI responses
-- ✅ **Session Persistence** - MongoDB stores your session
+- ✅ **AI Integration** - Google Gemini AI responses via direct API calls
+- ✅ **Session Persistence** - MongoDB stores your session permanently
 - ✅ **Web Interface** - Beautiful QR code scanning page
 - ✅ **All Commands** - Full feature set available
+- ✅ **Advanced Video Processing** - FFmpeg-powered animated sticker creation
+- ✅ **Anti-Loop Protection** - Smart message filtering and duplicate prevention
 
 ## ✨ Features
 
 - 🤖 **Smart Greetings** - Responds to hi, hello, hey with Jarvis welcome message
-- 🧠 **AI-Powered Jarvis** - Google Gemini AI integration for intelligent responses with Jarvis personality
-- ❓ **Help System** - Interactive help center with IRON-MAN themed responses
+- 🧠 **AI-Powered Jarvis** - Google Gemini AI integration with direct API calls for intelligent responses
+- ❓ **Help System** - Interactive help center with IRON-MAN themed responses and image
 - 🎯 **Unified Sticker Creator** - Convert images to static stickers and videos/GIFs to animated WebP stickers with single `!sticker` command
-- 👨‍💻 **Developer Info** - Smart developer information with image preview and infinite loop prevention
+- 👨‍💻 **Developer Info** - Smart developer information with GitHub avatar download and comprehensive profile
 - ❌ **Invalid Command Handler** - Video GIF preview response for unrecognized commands with helpful suggestions
-- 🗄️ **MongoDB Storage** - Persistent session storage using MongoDB Atlas
-- 🌐 **Web QR Interface** - Beautiful HTML page for easy QR code scanning
-- 🔄 **Auto Reconnection** - Automatic reconnection on disconnect
-- 📱 **Mobile Responsive** - Works perfectly on all devices
-- ☁️ **Heroku Ready** - One-click deployment with persistent sessions
-- 🎨 **IRON-MAN Theme** - Styled with IRON-MAN colors and design
-- 🛡️ **Anti-Loop Protection** - Enhanced filtering to prevent infinite message loops
+- 🗄️ **MongoDB Storage** - Persistent session storage using MongoDB Atlas with automatic reconnection
+- 🌐 **Web QR Interface** - Beautiful HTML page for easy QR code scanning with auto-refresh
+- 🔄 **Auto Reconnection** - Automatic reconnection on disconnect with retry logic
+- 📱 **Mobile Responsive** - Works perfectly on all devices with optimized interface
+- ☁️ **Heroku Ready** - One-click deployment with persistent sessions and environment variables
+- 🎨 **IRON-MAN Theme** - Styled with IRON-MAN colors and design throughout
+- 🛡️ **Anti-Loop Protection** - Enhanced filtering to prevent infinite message loops and bot responses
+- 🎬 **Advanced Video Processing** - FFmpeg-powered video/GIF to animated sticker conversion
+- 📱 **Auto-Suggestions** - Smart suggestions when users send media without commands
+- 🔧 **Error Handling** - Comprehensive error handling with fallbacks for all features
 
 ## 🚀 Commands
 
@@ -56,26 +63,30 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 - **`jarvis`** - Get formal Jarvis greeting "At your service, sir"
 
 ### AI Commands
-- **`!jarvis [message]`** - Get AI-powered responses from Jarvis using Google Gemini
+- **`!jarvis [message]`** - Get AI-powered responses from Jarvis using Google Gemini (Direct API)
   - Example: `!jarvis what is artificial intelligence?`
   - Example: `!jarvis explain quantum computing`
   - Example: `!jarvis how do I code in JavaScript?`
+  - **Features**: Displays "🤖 Thinking..." message before response, includes Jarvis-style formatting
 
 ### Help Commands
 - **`!help`** - Get bot help center with IRON-MAN image and info
 - **`!commands`** - Show all available commands list
 
 ### Developer Info Commands
-- **`"who is pasindu"`** - Get detailed developer information with image preview
+- **`"who is pasindu"`** - Get detailed developer information with GitHub avatar image
 - **`"about og"`** - Learn about the developer's background and projects
 - **`"tell me about pasindu"`** - Developer skills, projects, and contact info
+- **`"tell me about madhuwantha"`** - Alternative developer query format
+- **`"who is the developer"`** - General developer information request
 
 **Features:**
-- 🖼️ **GitHub Avatar Integration** - Downloads developer image from GitHub profile
-- 🔄 **Fallback Image Support** - Uses local IRON-MAN image if GitHub fails
-- 🛡️ **Anti-Loop Protection** - Enhanced filtering prevents infinite responses
+- 🖼️ **GitHub Avatar Integration** - Downloads developer image from GitHub profile automatically
+- 🔄 **Fallback Image Support** - Uses local IRON-MAN image if GitHub download fails
+- 🛡️ **Anti-Loop Protection** - Enhanced filtering prevents infinite responses to bot's own messages
 - 📊 **Comprehensive Profile** - Skills, projects, achievements, and contact details
-- ⚡ **Smart Detection** - Responds to natural language queries about the developer
+- ⚡ **Smart Detection** - Responds to natural language queries about the developer with regex patterns
+- 🎯 **Timeout Protection** - 10-second timeout for GitHub image downloads with proper error handling
 
 ### Sticker Commands
 - **`!sticker`** (as image caption) - Convert uploaded image to static sticker
@@ -97,8 +108,12 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 
 ### Method 3: Auto-Suggestion
 1. Send any image, video, or GIF without caption
-2. Bot suggests using `!sticker`
-3. Follow the suggestion
+2. Bot suggests using `!sticker` with media-specific instructions
+3. Follow the suggestion to create your sticker
+
+### Method 4: Invalid Command Response
+- When you send an invalid command (starting with `!`), bot shows a helpful video response
+- Includes suggestions to use `!commands` to see all available commands
 
 ## 🎬 Sticker Creation Features
 
@@ -110,17 +125,18 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, sti
 
 ### Animated Sticker Features (Videos/GIFs):
 - **🎯 Smart Processing** - Automatically optimizes video for WhatsApp compatibility
-- **� Original Dimensions** - Preserves video/GIF original width and height (no forced scaling)
+- **📐 Original Dimensions** - Preserves video/GIF original width and height (no forced scaling)
 - **🔳 Transparency Preservation** - Maintains transparent backgrounds, removes white padding
 - **⏱️ Configurable Duration** - Customizable max animation length (default: 10 seconds)
-- **🔇 Audio Removal** - Removes audio for smaller file size
+- **🔇 Audio Removal** - Removes audio for smaller file size and WhatsApp compatibility
 - **🔄 Format Support** - Works with MP4, GIF, WebM, and other video formats
 - **📊 Intelligent Compression** - Dual-stage compression for optimal file sizes
 - **⚡ Frame Rate Optimization** - Optimized FPS (15 FPS standard, 12 FPS compressed)
-- **🗜️ Advanced Encoding** - Uses WebP with enhanced quality settings
+- **🗜️ Advanced Encoding** - Uses WebP with enhanced quality settings via FFmpeg
 - **📏 Size Monitoring** - Automatic file size checking (500KB WhatsApp limit)
 - **🎛️ Adaptive Processing** - Smart scaling only when absolutely necessary
 - **⚙️ Easy Configuration** - Simple constants for duration adjustment
+- **📱 User Notifications** - Informs users about processing time and duration limits
 
 ## 🎯 Animated Sticker Technology
 
@@ -199,7 +215,7 @@ const MAX_STICKER_DURATION_COMPRESSED = 6; // Change for compressed version
    npm install
    ```
 
-3. **Set up MongoDB & Gemini AI (Optional):**
+3. **Set up MongoDB & Gemini AI (Optional for local development):**
    ```bash
    # Create .env file
    echo "MONGODB_URI=your_mongodb_connection_string" > .env
@@ -207,10 +223,12 @@ const MAX_STICKER_DURATION_COMPRESSED = 6; // Change for compressed version
    ```
    
    **To get Gemini API Key:**
-   - Visit [Google AI Studio](https://makersuite.google.com/app/apikey)
+   - Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
    - Sign in with your Google account
    - Create a new API key
    - Copy the API key to your `.env` file
+   
+   **Note**: The bot uses direct API calls to Google Gemini, no SDK required
 
 4. **Run the bot:**
    ```bash
@@ -282,9 +300,9 @@ iron_man_bot.auth_state
    git commit -m "Initial commit"
    ```
 
-4. **Set MongoDB URI (Recommended for persistence):**
+4. **Set Gemini AI API Key (Required for AI features):**
    ```bash
-   heroku config:set MONGODB_URI="your_mongodb_connection_string"
+   heroku config:set GEMINI_API_KEY="your-gemini-api-key-here"
    ```
 
 5. **Deploy to Heroku:**
@@ -292,12 +310,17 @@ iron_man_bot.auth_state
    git push heroku main
    ```
 
-5. **Check logs:**
+6. **Set MongoDB URI (Recommended for session persistence):**
+   ```bash
+   heroku config:set MONGODB_URI="your_mongodb_connection_string"
+   ```
+
+7. **Check logs:**
    ```bash
    heroku logs --tail
    ```
 
-6. **Open your app:**
+8. **Open your app:**
    ```bash
    heroku open
    ```
@@ -316,17 +339,20 @@ iron_man_bot.auth_state
 ```json
 {
   "@whiskeysockets/baileys": "^6.7.18",  // WhatsApp Web API
+  "axios": "^1.10.0",                    // HTTP client for API calls & GitHub avatar
+  "dotenv": "^16.6.1",                   // Environment variable loader
   "express": "^4.18.2",                  // Web server for QR interface
-  "mongodb": "^6.3.0",                   // MongoDB driver for session storage
-  "qrcode": "^1.5.3",                    // QR code generation for web
-  "qrcode-terminal": "^0.12.0",          // Terminal QR display
-  "sharp": "^0.32.6",                    // Image processing for stickers
   "ffmpeg-static": "^5.2.0",             // FFmpeg binary for video processing
   "fluent-ffmpeg": "^2.1.3",             // FFmpeg wrapper for animated stickers
-  "axios": "^1.10.0",                    // HTTP client for GitHub avatar downloads
-  "nodemon": "^3.1.10"                   // Development auto-restart
+  "mongodb": "^6.3.0",                   // MongoDB driver for session storage
+  "nodemon": "^3.1.10",                  // Development auto-restart
+  "qrcode": "^1.5.3",                    // QR code generation for web
+  "qrcode-terminal": "^0.12.0",          // Terminal QR display
+  "sharp": "^0.32.6"                     // Image processing for stickers
 }
 ```
+
+**Note**: This bot uses direct API calls to Google Gemini instead of the official SDK for better performance and smaller bundle size.
 
 ## 📋 Project Information
 
@@ -334,7 +360,7 @@ iron_man_bot.auth_state
 - **Repository Name**: IRON-MAN  
 - **Package Name**: iron-man (follows npm naming conventions)
 - **Display Name**: IRON-MAN Bot
-- **Version**: 1.2.2
+- **Version**: 1.3.0
 
 ## 🔧 Environment Variables
 
@@ -399,13 +425,23 @@ PORT=3000
    - `who is pasindu` - Developer info
 
 ### AI Response Examples:
-The bot uses Google Gemini AI to provide intelligent Jarvis-style responses:
+The bot uses Google Gemini AI via direct API calls to provide intelligent Jarvis-style responses:
 
 **User**: `!jarvis what is the arc reactor?`
-**Jarvis**: "Sir, the arc reactor is a revolutionary clean energy device that serves as the primary power source for the Iron Man suit. It generates clean, virtually limitless energy through a miniaturized fusion reaction, representing a breakthrough in sustainable technology."
+**Jarvis**: "🤖 *Jarvis Response:*
+
+Sir, the arc reactor is a revolutionary clean energy device that serves as the primary power source for the Iron Man suit. It generates clean, virtually limitless energy through a miniaturized fusion reaction, representing a breakthrough in sustainable technology."
 
 **User**: `!jarvis how does machine learning work?`
-**Jarvis**: "Excellent question, Sir. Machine learning enables computers to learn and improve from experience without being explicitly programmed. It uses algorithms to identify patterns in data, make predictions, and continuously refine its accuracy - much like how I adapt to serve you better."
+**Jarvis**: "🤖 *Jarvis Response:*
+
+Excellent question, Sir. Machine learning enables computers to learn and improve from experience without being explicitly programmed. It uses algorithms to identify patterns in data, make predictions, and continuously refine its accuracy - much like how I adapt to serve you better."
+
+**AI Features:**
+- **🤖 Thinking Indicator**: Shows "🤖 Thinking..." before generating response
+- **🎯 Formatted Responses**: All AI responses include "🤖 *Jarvis Response:*" header
+- **⚡ Direct API**: Uses direct Google Gemini API calls for faster responses
+- **🛡️ Error Handling**: Comprehensive error handling with fallback messages
 
 ## 📈 Performance & Statistics
 
@@ -420,12 +456,39 @@ The bot uses Google Gemini AI to provide intelligent Jarvis-style responses:
 ### Features Status:
 ```
 ✅ WhatsApp Integration     ✅ MongoDB Persistence
-✅ Google Gemini AI        ✅ Sticker Creation  
-✅ Web QR Interface        ✅ Command System
-✅ Error Handling          ✅ Auto-Reconnection
-✅ Developer Info          ✅ Invalid Command Handler
-✅ Anti-Loop Protection    ✅ Session Management
+✅ Google Gemini AI         ✅ Advanced Sticker Creation  
+✅ Web QR Interface         ✅ Command System
+✅ Error Handling           ✅ Auto-Reconnection
+✅ Developer Info           ✅ Invalid Command Handler
+✅ Anti-Loop Protection     ✅ Session Management
+✅ FFmpeg Video Processing  ✅ GitHub Avatar Integration
+✅ Direct API Implementation ✅ Auto-Suggestions
 ```
+
+## 🏗️ Architecture & Implementation
+
+### Current Implementation (v1.3.0):
+- **🔧 Direct API Integration**: Uses direct HTTP calls to Google Gemini API instead of SDK
+- **📦 Lightweight Build**: No heavy SDK dependencies, faster deployment and startup
+- **🔄 Error Handling**: Comprehensive error handling with multiple fallback strategies
+- **🗄️ Persistent Storage**: MongoDB Atlas for session storage with automatic reconnection
+- **🎬 FFmpeg Processing**: Advanced video/GIF processing with dual-stage compression
+- **🛡️ Anti-Loop Protection**: Smart message filtering to prevent bot loops and duplicates
+- **📱 Responsive Interface**: Beautiful web interface with auto-refresh and mobile optimization
+
+### Key Technical Features:
+1. **Session Management**: MongoDB-based persistent sessions survive deployments
+2. **Media Processing**: Sharp for images, FFmpeg for videos with intelligent compression
+3. **AI Integration**: Direct Gemini API calls with structured error handling
+4. **Command System**: Regex-based command detection with natural language support
+5. **Auto-Suggestions**: Context-aware suggestions for media and invalid commands
+6. **Web Interface**: Express server with real-time QR code updates
+
+### Performance Optimizations:
+- **📊 File Size Monitoring**: Automatic compression adjustment for WhatsApp limits
+- **⚡ Caching Strategy**: Efficient media downloading and temporary file management
+- **🔄 Retry Logic**: Automatic reconnection and error recovery mechanisms
+- **📱 Mobile-First**: Optimized for mobile scanning and interaction
 
 ## 🚀 Future Enhancements
 
