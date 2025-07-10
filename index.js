@@ -133,7 +133,7 @@ async function startBot() {
 Available Commands:
 - *!commands* : List all commands
 - *!sticker* : Convert image/video/GIF to sticker
-- *!jarvis* : Get AI-powered responses from Jarvis
+- *!jarvis <your message>* : Get AI-powered responses from Jarvis
 
 ⚙️ Bot created by *Pasindu OG Dev*
 📌 Version: 1.2.2`
@@ -148,7 +148,7 @@ Available Commands:
 - !commands : Show all commands
 - !help : Get help info
 - !sticker : Convert image/video/GIF to sticker
-- !jarvis [message] : Get AI-powered responses from Jarvis
+- !jarvis <your message> : Get AI-powered responses from Jarvis
 
 Use them in chat to try them out! 👌` })
         }
@@ -889,11 +889,12 @@ app.get('/', async (req, res) => {
                     <p><strong>Available Commands:</strong></p>
                     <div style="text-align: left; background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0;">
                         <p style="margin: 5px 0;">💬 <strong>hi, hello, hey</strong> - Jarvis greeting</p>
-                        <p style="margin: 5px 0;">🤵 <strong>jarvis</strong> - Formal greeting</p>
+                        <p style="margin: 5px 0;">🤵 <strong>jarvis</strong> - Get AI-powered responses from Jarvis</p>
+                        <p style="margin: 5px 0;">🧠 <strong>!jarvis <your message></strong> - Formal greeting</p>
                         <p style="margin: 5px 0;">❓ <strong>!help</strong> - Bot help center</p>
                         <p style="margin: 5px 0;">📋 <strong>!commands</strong> - Command list</p>
                         <p style="margin: 5px 0;">🎯 <strong>!sticker</strong> - Convert image to sticker</p>
-                        <p style="margin: 5px 0;">� <strong>!sticker</strong> - Convert image/video/GIF to sticker</p>
+                        <p style="margin: 5px 0;">🎯 <strong>!sticker</strong> - Convert image/video/GIF to sticker</p>
                         <p style="margin: 5px 0;">👨‍💻 <strong>"who is pasindu"</strong> - Developer info with image</p>
                     </div>
                     <div style="margin-top: 20px; padding: 15px; background: #e8f5e8; border-radius: 10px; border-left: 4px solid #4CAF50;">
