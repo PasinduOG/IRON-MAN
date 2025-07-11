@@ -796,20 +796,6 @@ Use them in chat to try them out! 👌` })
             }
         }
 
-        // Alternative: Just detect any image and provide sticker option
-        else if (msg.message?.imageMessage && !messageText) {
-            await sock.sendMessage(userId, {
-                text: '📸 Sir I see you sent an image! Send "!sticker" to convert it to a sticker.'
-            });
-        }
-
-        // Alternative: Just detect any video/GIF and provide sticker option  
-        else if ((msg.message?.videoMessage || msg.message?.gifMessage) && !messageText) {
-            await sock.sendMessage(userId, {
-                text: '🎬 Sir I see you sent a video/GIF! Send "!sticker" to convert it to an animated sticker.'
-            });
-        }
-
         // Invalid command detection with video preview (GIF-like)
         if (messageText.startsWith('!') && 
             messageText !== '!commands' && 

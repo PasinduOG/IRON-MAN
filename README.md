@@ -66,6 +66,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 - 👥 **Multi-User Support** - Concurrent user handling with rate limiting and session management
 - 🎬 **FFmpeg Processing** - Advanced video/GIF processing with dual-stage compression
 - 📱 **Responsive Interface** - Beautiful web interface with auto-refresh and mobile optimization
+- 🔐 **Clean Media Handling** - No automatic replies to uploaded media, allowing for cleaner conversation flow
 
 ## 🚀 Commands
 
@@ -139,6 +140,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 - **Auto-Detection**: Intelligently detects media type and applies appropriate conversion
 - **Quality Optimization**: Maintains visual quality while meeting WhatsApp size limits
 - **Error Recovery**: Comprehensive error handling with user-friendly messages
+- **Clean Operation**: No automatic suggestions when media is uploaded, maintaining clean conversation flow
 
 ## 🤖 AI Integration Details
 
@@ -484,6 +486,8 @@ The bot intelligently recognizes all 21+ valid commands and provides helpful vid
 ✅ Uptime Monitoring            ✅ Welcome Menu System           
 ✅ Comprehensive Command List    ✅ Memory Management Commands
 ✅ Context-Aware AI Responses    ✅ Automatic Memory Cleanup
+✅ MIT License Implementation    ✅ Clean Media Handling
+✅ Optimized User Experience    ✅ Non-Intrusive Operation
 
 ### 🚀 Future Enhancements
 
@@ -514,6 +518,20 @@ The bot intelligently recognizes all 21+ valid commands and provides helpful vid
 
 ### Bug Reports & Feature Requests:
 - **Issues**: [GitHub Issues](https://github.com/PasinduOG/IRON-MAN/issues)
+
+## 📝 License
+
+This project is licensed under the **MIT License** - see the [LICENSE](LICENSE) file for details.
+
+### MIT License Summary:
+- ✅ **Commercial use** - You can use this commercially
+- ✅ **Modification** - You can modify the code
+- ✅ **Distribution** - You can distribute copies
+- ✅ **Private use** - You can use privately
+- 📝 **License and copyright notice** - Must include copyright notice
+- 📝 **State changes** - Must document changes if modified
+
+The MIT License is a permissive free software license that allows you to do almost anything you want with this project, as long as you include the original copyright and license notice in any copy or substantial portion of the software.
 
 ## ⭐ Show Your Support
 
