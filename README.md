@@ -25,7 +25,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 3. **Start chatting**:
    - Send `hi` for a greeting
    - Send `!ping` to test bot responsiveness
-   - Send `!jarvis what is AI?` for AI responses with memory
+   - Send `!chat what is AI?` for AI responses with memory
    - Send `!help` for all commands with image
    - Send `!commands` for organized command list
    - Send an image with `!sticker` to create stickers
@@ -47,7 +47,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 ## ✨ Features
 
 - 🤖 **Smart Greetings** - Responds to hi, hello, hey with Jarvis welcome message
-- 🧠 **AI-Powered Jarvis with Memory** - Google Gemini AI integration with conversation context and personalized responses
+- 🧠 **AI-Powered chat with Memory** - Google Gemini AI integration with conversation context and personalized responses
 - 🧠 **Conversation Memory** - Remembers last 10 message exchanges for context-aware responses
 - ❓ **Enhanced Help System** - Interactive help center with IRON-MAN themed responses and comprehensive command guide
 - 🔧 **Quick Commands** - Instant status checks with `!ping`, `!info`, `!menu`, `!uptime` for better user experience
@@ -78,7 +78,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 - **`!help`** - Get bot help center with IRON-MAN image and comprehensive info
 - **`!commands`** - Show all available commands list with organized categories
 - **`!sticker`** - Convert image/video/GIF to sticker (static or animated)
-- **`!jarvis [message]`** - Get AI-powered responses from Jarvis with conversation memory
+- **`!chat [message]`** - Get AI-powered responses with conversation memory
 - **`!aboutdev`** - Get detailed developer information with live GitHub data and avatar
 - **`!stats`** - Show your bot usage statistics (messages sent, session info, rate limits)
 
@@ -94,14 +94,13 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 - **`!bot`**, **`!uptime`**, **`!status`** - Show detailed bot status with uptime information
 
 ### 🧠 AI Commands
-- **`!jarvis [message]`** - Get AI-powered responses from Jarvis with conversation memory
-  - Example: `!jarvis what is artificial intelligence?`
-  - Example: `!jarvis explain quantum computing`
-  - Example: `!jarvis how do I code in JavaScript?`
+- **`!chat [message]`** - Get AI-powered responses from conversation memory
+  - Example: `!chat what is artificial intelligence?`
+  - Example: `!chat explain quantum computing`
+  - Example: `!chat how do I code in JavaScript?`
   - **Features**: 
     - Displays "🤖 Thinking..." message before response
     - Remembers last 10 conversation exchanges for context
-    - Includes Jarvis-style formatting
     - Personalized responses based on conversation history
     - Automatic memory cleanup to maintain optimal performance
 
@@ -148,7 +147,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 - **Model**: Gemini-2.0-flash (Latest Google AI model)
 - **Implementation**: Direct API calls with conversation context
 - **Memory System**: MongoDB-based conversation memory with 10-message context
-- **Features**: Context-aware responses, Jarvis personality, personalized conversations
+- **Features**: Context-aware responses, personalized conversations
 - **Rate Limiting**: Built-in cooldown system to prevent spam
 - **Error Handling**: Graceful fallbacks and user-friendly error messages
 
@@ -156,7 +155,6 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 - 🧠 **Intelligent Responses** - Context-aware AI powered by Google Gemini
 - 🧠 **Conversation Memory** - Remembers last 10 exchanges for personalized responses
 - ⚡ **Fast Processing** - Direct API calls for optimal speed
-- 🎭 **Jarvis Personality** - Responses formatted in Tony Stark's Jarvis style
 - 🛡️ **Rate Limited** - 3-second cooldown between requests per user
 - 🔄 **Error Recovery** - Handles timeouts and API failures gracefully
 - 🗑️ **Memory Management** - Automatic cleanup and user-controlled memory clearing
@@ -184,7 +182,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 - **User-Specific** - Rate limits applied individually per user
 
 ### Command Organization:
-- **Primary Commands** - Core bot functionality (`!help`, `!sticker`, `!jarvis`, etc.)
+- **Primary Commands** - Core bot functionality (`!help`, `!sticker`, `!chat`, etc.)
 - **Memory Commands** - AI memory management (`!memory`, `!forgetme`, `!clearcontext`)
 - **Quick Commands** - Fast status and info checks (`!ping`, `!info`, `!uptime`)
 - **Natural Language** - Casual interactions (`hi`, `hello`, `jarvis`)
@@ -403,7 +401,7 @@ GITHUB_USERNAME=PasinduOG
 ### Quick Test Commands:
 1. **Basic greeting**: Send `hi` in WhatsApp
 2. **Bot status**: `!ping` or `!alive` to check if bot is responsive
-3. **AI test**: `!jarvis what is artificial intelligence?`
+3. **AI test**: `!chat what is artificial intelligence?`
 4. **Memory check**: `!memory` to see your conversation memory stats
 5. **Help**: `!help` for bot information with image
 6. **Commands list**: `!commands` for all available commands
@@ -422,15 +420,15 @@ GITHUB_USERNAME=PasinduOG
 - **User**: `!info` → **Bot**: `🤖 *IRON-MAN Bot Information* 🔥 Version: 1.4.0 - AI Memory Edition`
 
 **AI Response Examples:**
-The bot uses Google Gemini AI with conversation memory to provide intelligent Jarvis-style responses:
+The bot uses Google Gemini AI with conversation memory to provide intelligent responses:
 
 **First conversation:**
-**User**: `!jarvis what is the arc reactor?`
-**Jarvis**: *🤖 Jarvis Response: The arc reactor is a clean energy source...*
+**User**: `!chat what is the arc reactor?`
+**Jarvis**: *🧠 Response: The arc reactor is a clean energy source...*
 
 **Later in conversation (with memory):**
-**User**: `!jarvis how does it work?`
-**Jarvis**: *🤖 Jarvis Response: The arc reactor you asked about earlier works by...*
+**User**: `!chat how does it work?`
+**Jarvis**: *🧠 Response: The arc reactor you asked about earlier works by...*
 
 **Memory Management Examples:**
 **User**: `!memory`
@@ -451,7 +449,7 @@ The bot uses Google Gemini AI with conversation memory to provide intelligent Ja
 
 ### 📋 All Supported Commands (21 Total)
 **Primary Commands:**
-- `!help`, `!commands`, `!sticker`, `!jarvis <prompt>`, `!aboutdev`, `!stats`
+- `!help`, `!commands`, `!sticker`, `!chat <prompt>`, `!aboutdev`, `!stats`
 
 **Memory Management Commands:**
 - `!memory`, `!forgetme`, `!clearcontext`

@@ -295,7 +295,7 @@ async function handleChatCommand(client, msg, args) {
     const userNumber = userId.split('@')[0]; // Extract phone number from WhatsApp ID
     const prompt = args.join(" ");
     
-    if (!prompt) return client.sendMessage(userId, { text: "❌ Usage: !jarvis <prompt>" });
+    if (!prompt) return client.sendMessage(userId, { text: "❌ Usage: !chat <prompt>" });
 
     // Check rate limiting
     const rateCheck = checkRateLimit(userId, 'ai');
@@ -342,7 +342,7 @@ async function handleChatCommand(client, msg, args) {
         
         // Send response to user
         await client.sendMessage(userId, {
-            text: `🤖 *Jarvis Response:*\n\n${aiReply}`
+            text: `🧠 *Response:*\n\n${aiReply}`
         });
         
         // Update memory with both user message and AI reply
@@ -479,7 +479,7 @@ async function startBot() {
 - *!commands* : List all commands
 - *!help* : Show this help center
 - *!sticker* : Convert image/video/GIF to sticker
-- *!jarvis <prompt>* : Get AI-powered responses with memory
+- *!chat <prompt>* : Get AI-powered responses with memory
 - *!aboutdev* : Live GitHub developer info with image
 - *!stats* : Show your usage statistics
 
@@ -512,7 +512,7 @@ async function startBot() {
 - !commands : Show all commands
 - !help : Get help info with image
 - !sticker : Convert image/video/GIF to sticker
-- !jarvis <prompt> : Get AI-powered responses with memory
+- !chat <prompt> : Get AI-powered responses with memory
 - !aboutdev : Live GitHub developer info with image
 - !stats : Show your usage statistics
 
@@ -817,7 +817,7 @@ Use them in chat to try them out! 👌` })
             messageText !== '!alive' &&
             messageText !== '!uptime' &&
             messageText !== '!status' &&
-            !messageText.startsWith('!jarvis ') && !messageText.startsWith('!Jarvis ')) {
+            !messageText.startsWith('!chat ') && !messageText.startsWith('!chat ')) {
             
             console.log(`❌ Invalid command "${messageText}" from ${senderName}, sending video GIF response...`);
             
@@ -890,8 +890,8 @@ Use them in chat to try them out! 👌` })
         }
 
         // AI-powered Chat command
-        if (messageText.startsWith('!jarvis ') || messageText.startsWith('!Jarvis ')) {
-            const commandText = messageText.startsWith('!jarvis ') ? messageText.substring(8) : messageText.substring(8);
+        if (messageText.startsWith('!chat ') || messageText.startsWith('!chat ')) {
+            const commandText = messageText.startsWith('!chat ') ? messageText.substring(8) : messageText.substring(8);
             const args = commandText.trim().split(' ');
             await handleChatCommand(sock, msg, args);
         }
@@ -925,7 +925,7 @@ Use them in chat to try them out! 👌` })
                     `Hi ${senderName}! I'm your AI-powered WhatsApp assistant.\n\n` +
                     `📋 Type *!commands* to see all available commands\n` +
                     `❓ Type *!help* for detailed help and instructions\n` +
-                    `🧠 Try *!jarvis <your question>* for AI-powered responses\n\n` +
+                    `🧠 Try *!chat <your question>* for AI-powered responses\n\n` +
                     `Let's get started! 🚀`
             });
         }
@@ -985,7 +985,7 @@ Use them in chat to try them out! 👌` })
 
 📊 No conversation history found yet.
 
-💡 Start chatting with *!jarvis <your message>* to build memory!
+💡 Start chatting with *!chat <your message>* to build memory!
 The AI will remember your last 10 conversation exchanges for more personalized responses.`
                 });
             }
@@ -1001,7 +1001,7 @@ The AI will remember your last 10 conversation exchanges for more personalized r
 
 ✅ All your conversation memory has been cleared.
 🔄 Future AI conversations will start fresh.
-💡 Use *!jarvis <message>* to start building new memory.
+💡 Use *!chat <message>* to start building new memory.
 
 Your session statistics and other data remain unchanged.`
                 });
@@ -1313,7 +1313,7 @@ app.get('/', async (req, res) => {
                     <p><strong>Available Commands:</strong></p>
                     <div style="text-align: left; background: #f5f5f5; padding: 15px; border-radius: 8px; margin: 15px 0;">
                         <p style="margin: 5px 0; font-weight: bold; color: #333;">� Primary Commands:</p>
-                        <p style="margin: 5px 0;">🧠 <strong>!jarvis &lt;prompt&gt;</strong> - Get AI-powered responses</p>
+                        <p style="margin: 5px 0;">🧠 <strong>!chat &lt;prompt&gt;</strong> - Get AI-powered responses</p>
                         <p style="margin: 5px 0;">🎯 <strong>!sticker</strong> - Convert image/video/GIF to sticker</p>
                         <p style="margin: 5px 0;">👨‍💻 <strong>!aboutdev</strong> - Live GitHub developer info with image</p>
                         <p style="margin: 5px 0;">❓ <strong>!help</strong> - Bot help center</p>
