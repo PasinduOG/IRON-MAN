@@ -817,7 +817,7 @@ Use them in chat to try them out! 👌` })
             messageText !== '!alive' &&
             messageText !== '!uptime' &&
             messageText !== '!status' &&
-            !messageText.startsWith('!chat ') && !messageText.startsWith('!chat ')) {
+            !messageText.startsWith('!chat ')) {
             
             console.log(`❌ Invalid command "${messageText}" from ${senderName}, sending video GIF response...`);
             
@@ -890,10 +890,13 @@ Use them in chat to try them out! 👌` })
         }
 
         // AI-powered Chat command
-        if (messageText.startsWith('!chat ') || messageText.startsWith('!chat ')) {
-            const commandText = messageText.startsWith('!chat ') ? messageText.substring(8) : messageText.substring(8);
-            const args = commandText.trim().split(' ');
-            await handleChatCommand(sock, msg, args);
+        if (messageText.startsWith('!chat ')) {
+            const prompt = messageText.substring(6).trim(); // Remove '!chat ' and trim whitespace
+            if (!prompt) {
+                await sock.sendMessage(userId, { text: "❌ Usage: !chat <prompt>" });
+            } else {
+                await handleChatCommand(sock, msg, [prompt]);
+            }
         }
 
         // Common command redirects - Handle commands users might expect
