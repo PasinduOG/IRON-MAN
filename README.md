@@ -49,7 +49,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 
 - 🤖 **Smart Greetings** - Responds to hi, hello, hey with Jarvis welcome message
 - 🧠 **AI-Powered chat with Memory** - Google Gemini AI integration with conversation context and personalized responses
-- 🎵 **YouTube to MP3 Converter** - Convert YouTube videos to downloadable MP3 files with metadata
+- 🎵 **YouTube to MP3 Converter** - Convert YouTube videos to MP3 and auto-send as WhatsApp documents with metadata
 - 🧠 **Conversation Memory** - Remembers last 10 message exchanges for context-aware responses
 - ❓ **Enhanced Help System** - Interactive help center with IRON-MAN themed responses and comprehensive command guide
 - 🔧 **Quick Commands** - Instant status checks with `!ping`, `!info`, `!menu`, `!uptime` for better user experience
@@ -108,16 +108,19 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
     - Automatic memory cleanup to maintain optimal performance
 
 ### 🎵 YouTube to MP3 Conversion Commands
-- **`!conv [youtube_url]`** - Convert YouTube videos to downloadable MP3 files
+- **`!conv [youtube_url]`** - Convert YouTube videos to MP3 and auto-send as document
   - Example: `!conv https://www.youtube.com/watch?v=dQw4w9WgXcQ`
   - Example: `!conv https://youtu.be/dQw4w9WgXcQ`
   - **Features**:
     - Supports both youtube.com/watch and youtu.be short URLs
     - Shows conversion progress with "🎵 Converting..." message
-    - Provides download link with video metadata (title, duration)
+    - **Auto-downloads and sends MP3 as WhatsApp document**
+    - Includes metadata (title, duration, file size) in caption
+    - Fallback to download link if auto-download fails
     - Built-in URL validation and error handling
     - Rate limiting to prevent spam requests
-    - Timeout handling for large videos
+    - Timeout handling for large videos (2-minute download timeout)
+    - Clean filename generation (removes special characters)
     - User-friendly error messages for different failure scenarios
 
 ### 👨‍💻 Developer Info Commands
@@ -457,7 +460,8 @@ The bot uses Google Gemini AI with conversation memory to provide intelligent re
 **YouTube Conversion Examples:**
 **User**: `!conv https://www.youtube.com/watch?v=dQw4w9WgXcQ`
 **Bot**: *🎵 Converting YouTube video to MP3... ⏳ This may take a few moments, please wait.*
-**Bot**: *✅ Conversion Successful! 🎵 Title: Rick Astley - Never Gonna Give You Up ⏱️ Duration: 3:33 📥 Download Link: [download_url]*
+**Bot**: *📥 Downloading MP3 file... 🎵 Rick Astley - Never Gonna Give You Up ⏳ Please wait while I download and send the file.*
+**Bot**: *[Sends MP3 as document with caption: 🎵 Rick Astley - Never Gonna Give You Up ⏱️ Duration: 3:33 � File Size: 5.2 MB ⚡ Converted by IRON-MAN Bot v1.5.0]*
 
 ### Sticker Creation Examples:
 - Send any image with caption `!sticker` → Creates static sticker

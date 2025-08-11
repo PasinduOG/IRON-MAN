@@ -519,7 +519,7 @@ async function startBot() {
 - *!help* : Show this help center
 - *!sticker* : Convert image/video/GIF to sticker
 - *!chat <prompt>* : Get AI-powered responses with memory
-- *!conv <youtube_url>* : Convert YouTube videos to MP3
+- *!conv <youtube_url>* : Convert YouTube videos to MP3 and auto-send as document
 - *!aboutdev* : Live GitHub developer info with image
 - *!stats* : Show your usage statistics
 
@@ -553,7 +553,7 @@ async function startBot() {
 - !help : Get help info with image
 - !sticker : Convert image/video/GIF to sticker
 - !chat <prompt> : Get AI-powered responses with memory
-- !conv <youtube_url> : Convert YouTube videos to MP3
+- !conv <youtube_url> : Convert YouTube videos to MP3 and auto-send as document
 - !aboutdev : Live GitHub developer info with image
 - !stats : Show your usage statistics
 
@@ -947,7 +947,7 @@ Use them in chat to try them out! 👌` })
             
             if (!url) {
                 await sock.sendMessage(userId, { 
-                    text: "❌ Usage: !conv <youtube_url>\n\n📌 Example: !conv https://www.youtube.com/watch?v=dQw4w9WgXcQ" 
+                    text: "❌ Usage: !conv <youtube_url>\n\n📌 Example: !conv https://www.youtube.com/watch?v=dQw4w9WgXcQ\n💡 The MP3 will be automatically downloaded and sent as a document!" 
                 });
                 return;
             }
@@ -991,17 +991,59 @@ Use them in chat to try them out! 👌` })
                     // Get the download URL (API might return either 'downloadUrl' or 'url')
                     const downloadLink = result.downloadUrl || result.url;
                     
-                    // Send success message with download link
-                    await sock.sendMessage(userId, {
-                        text: `✅ *Conversion Successful!*\n\n` +
-                              `🎵 *Title:* ${result.title || 'Unknown'}\n` +
-                              `⏱️ *Duration:* ${result.duration ? `${Math.floor(result.duration / 60)}:${(result.duration % 60).toString().padStart(2, '0')}` : 'Unknown'}\n` +
-                              `📥 *Download Link:* ${downloadLink}\n\n` +
-                              `💡 Click the link above to download your MP3 file!\n` +
-                              `⚡ *Converted by IRON-MAN Bot*`
-                    });
-                    
-                    console.log(`✅ YouTube conversion successful for ${senderName}: ${result.title}`);
+                    try {
+                        // Send downloading message
+                        await sock.sendMessage(userId, {
+                            text: `📥 *Downloading MP3 file...*\n\n🎵 *${result.title || 'Unknown'}*\n⏳ Please wait while I download and send the file.`
+                        });
+
+                        console.log(`📥 Downloading MP3 from: ${downloadLink}`);
+                        
+                        // Download the MP3 file
+                        const downloadResponse = await axios.get(downloadLink, {
+                            responseType: 'arraybuffer',
+                            timeout: 120000, // 2 minutes timeout for download
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                            }
+                        });
+
+                        const mp3Buffer = Buffer.from(downloadResponse.data);
+                        console.log(`✅ MP3 downloaded successfully. Size: ${(mp3Buffer.length / 1024 / 1024).toFixed(2)} MB`);
+
+                        // Generate a clean filename
+                        let filename = result.title || 'audio';
+                        // Remove special characters and limit length
+                        filename = filename.replace(/[^\w\s-]/g, '').trim();
+                        filename = filename.substring(0, 50); // Limit to 50 characters
+                        filename = `${filename}.mp3`;
+
+                        // Send the MP3 as a document
+                        await sock.sendMessage(userId, {
+                            document: mp3Buffer,
+                            fileName: filename,
+                            mimetype: 'audio/mpeg',
+                            caption: `🎵 *${result.title || 'Audio File'}*\n\n` +
+                                   `⏱️ *Duration:* ${result.duration ? `${Math.floor(result.duration / 60)}:${(result.duration % 60).toString().padStart(2, '0')}` : 'Unknown'}\n` +
+                                   `📁 *File Size:* ${(mp3Buffer.length / 1024 / 1024).toFixed(2)} MB\n` +
+                                   `⚡ *Converted by IRON-MAN Bot v${BOT_VERSION}*`
+                        });
+
+                        console.log(`✅ MP3 document sent successfully to ${senderName}: ${result.title}`);
+
+                    } catch (downloadError) {
+                        console.error(`❌ Download error for ${senderName}:`, downloadError.message);
+                        
+                        // Fallback to sending download link if direct download fails
+                        await sock.sendMessage(userId, {
+                            text: `⚠️ *Auto-download failed, but conversion was successful!*\n\n` +
+                                  `🎵 *Title:* ${result.title || 'Unknown'}\n` +
+                                  `⏱️ *Duration:* ${result.duration ? `${Math.floor(result.duration / 60)}:${(result.duration % 60).toString().padStart(2, '0')}` : 'Unknown'}\n` +
+                                  `📥 *Download Link:* ${downloadLink}\n\n` +
+                                  `💡 Click the link above to download your MP3 file manually!\n` +
+                                  `⚡ *Converted by IRON-MAN Bot*`
+                        });
+                    }
                 } else {
                     // More detailed error message based on response
                     let errorDetail = "The video might be private, unavailable, or too long.";
