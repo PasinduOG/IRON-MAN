@@ -33,7 +33,7 @@ const GITHUB_CACHE_DURATION = 3600000; // 1 hour cache
 // Dynamic GitHub Profile Fetching
 async function fetchGithubProfile(username = GITHUB_USERNAME) {
     const now = Date.now();
-    
+
     // Return cached data if still valid
     if (githubProfileCache && (now - githubProfileCacheTime) < GITHUB_CACHE_DURATION) {
         return githubProfileCache;
@@ -41,9 +41,10 @@ async function fetchGithubProfile(username = GITHUB_USERNAME) {
 
     try {
         console.log(`🔄 Fetching GitHub profile for @${username}...`);
-        const response = await axios.get(`https://api.github.com/users/${username}`, {                        headers: {
-                            'User-Agent': `IRON-MAN-Bot/${BOT_VERSION}`
-                        },
+        const response = await axios.get(`https://api.github.com/users/${username}`, {
+            headers: {
+                'User-Agent': `IRON-MAN-Bot/${BOT_VERSION}`
+            },
             timeout: 10000
         });
 
@@ -55,7 +56,7 @@ async function fetchGithubProfile(username = GITHUB_USERNAME) {
         }
     } catch (error) {
         console.error(`❌ Error fetching GitHub profile for @${username}:`, error.message);
-        
+
         // Return fallback data if API fails
         return {
             login: username,
@@ -82,9 +83,9 @@ async function generateDeveloperInfo(profileData) {
         month: 'long',
         day: 'numeric'
     });
-    
+
     const accountAge = Math.floor((Date.now() - new Date(profileData.created_at).getTime()) / (1000 * 60 * 60 * 24));
-    
+
     return `👨‍💻 *About ${profileData.name || profileData.login}*\n\n` +
         `${profileData.bio ? `📝 *Bio:* ${profileData.bio}\n\n` : ''}` +
         `🌟 *Professional Background:*\n` +
@@ -156,7 +157,7 @@ async function generateDeveloperInfoFallback(profileData) {
         year: 'numeric',
         month: 'long'
     });
-    
+
     return `👨‍💻 *About ${profileData.name || profileData.login}*\n\n` +
         `${profileData.bio ? `📝 *Bio:* ${profileData.bio}\n\n` : ''}` +
         `🌟 *Professional Background:*\n` +
@@ -220,33 +221,33 @@ const STICKER_COOLDOWN = 5000; // 5 seconds between sticker requests per user
 function checkRateLimit(userId, type = 'general') {
     const now = Date.now();
     const userKey = `${userId}_${type}`;
-    
+
     if (!userRateLimits.has(userKey)) {
         userRateLimits.set(userKey, { count: 0, resetTime: now + RATE_LIMIT_WINDOW, lastRequest: 0 });
     }
-    
+
     const userLimit = userRateLimits.get(userKey);
-    
+
     // Reset counter if window expired
     if (now > userLimit.resetTime) {
         userLimit.count = 0;
         userLimit.resetTime = now + RATE_LIMIT_WINDOW;
     }
-    
+
     // Check specific cooldowns
     if (type === 'ai' && (now - userLimit.lastRequest) < AI_COOLDOWN) {
         return { allowed: false, reason: `Please wait ${Math.ceil((AI_COOLDOWN - (now - userLimit.lastRequest)) / 1000)} seconds before using AI again` };
     }
-    
+
     if (type === 'sticker' && (now - userLimit.lastRequest) < STICKER_COOLDOWN) {
         return { allowed: false, reason: `Please wait ${Math.ceil((STICKER_COOLDOWN - (now - userLimit.lastRequest)) / 1000)} seconds before creating another sticker` };
     }
-    
+
     // Check general rate limit
     if (userLimit.count >= MAX_REQUESTS_PER_WINDOW) {
         return { allowed: false, reason: 'Rate limit exceeded. Please wait a moment before sending more commands.' };
     }
-    
+
     userLimit.count++;
     userLimit.lastRequest = now;
     return { allowed: true };
@@ -263,7 +264,7 @@ function getUserSession(userId) {
             preferences: {}
         });
     }
-    
+
     const session = userSessions.get(userId);
     session.lastActivity = Date.now();
     session.messageCount++;
@@ -274,7 +275,7 @@ function getUserSession(userId) {
 function cleanupInactiveSessions() {
     const now = Date.now();
     const INACTIVE_THRESHOLD = 30 * 60 * 1000; // 30 minutes
-    
+
     for (const [userId, session] of userSessions.entries()) {
         if (now - session.lastActivity > INACTIVE_THRESHOLD) {
             userSessions.delete(userId);
@@ -294,7 +295,7 @@ async function handleChatCommand(client, msg, args) {
     const userId = msg.key.remoteJid;
     const userNumber = userId.split('@')[0]; // Extract phone number from WhatsApp ID
     const prompt = args.join(" ");
-    
+
     if (!prompt) return client.sendMessage(userId, { text: "❌ Usage: !chat <prompt>" });
 
     // Check rate limiting
@@ -310,63 +311,90 @@ async function handleChatCommand(client, msg, args) {
 
     // Mark as active
     activeProcesses.set(`${userId}_ai`, Date.now());
-    
+
     // Get user session
     const session = getUserSession(userId);
-    
+
     try {
         // Send thinking message
         await client.sendMessage(userId, { text: "🤖 Thinking..." });
 
         // Retrieve user's conversation memory
         const memory = await getMemory(userNumber);
-        
+
         // Build conversation context with memory
         const conversationContext = buildConversationContext(memory, prompt);
-        
+
         console.log(`🧠 Using ${memory.length} previous messages for context (User: ${userNumber})`);
 
         const res = await axios.post(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-            { 
-                contents: [{ 
-                    parts: [{ 
-                        text: conversationContext 
-                    }] 
-                }] 
+            {
+                contents: [{
+                    parts: [{
+                        text: conversationContext
+                    }]
+                }]
             },
             { timeout: 30000 } // 30 second timeout
         );
 
         const aiReply = res.data.candidates?.[0]?.content?.parts?.[0]?.text || "🤖 No response.";
-        
+
         // Send response to user
         await client.sendMessage(userId, {
             text: `🧠 *Response:*\n\n${aiReply}`
         });
-        
+
         // Update memory with both user message and AI reply
         await updateMemory(userNumber, prompt, aiReply);
-        
+
         // Clear old memory to maintain only latest 10 messages
         await clearOldMemory(userNumber, 10);
-        
+
         console.log(`✅ AI response sent to user ${session.id} (Message #${session.messageCount}) with memory updated`);
-        
+
     } catch (err) {
         console.error(`❌ Gemini error for user ${userId}:`, err.message);
-        
+
         let errorMessage = "❌ Error with Gemini AI.";
         if (err.code === 'ECONNABORTED') {
             errorMessage = "⏰ AI request timed out. Please try again with a shorter prompt.";
         } else if (err.response?.status === 429) {
             errorMessage = "🚫 AI service is busy. Please try again in a few moments.";
         }
-        
+
         client.sendMessage(userId, { text: errorMessage });
     } finally {
         // Remove from active processes
         activeProcesses.delete(`${userId}_ai`);
+    }
+}
+
+// YouTube to MP3 Conversion Function
+async function convertYouTubeToMP3(url) {
+    const options = {
+        method: 'POST',
+        url: 'https://youtube-to-mp337.p.rapidapi.com/api/converttomp3',
+        headers: {
+            'x-rapidapi-key': '2f04d689f3msh8b4ddfc2299fa37p1e8d90jsn35709382433c',
+            'x-rapidapi-host': 'youtube-to-mp337.p.rapidapi.com',
+            'Content-Type': 'application/json'
+        },
+        data: {
+            url: url
+        },
+        timeout: 60000 // 60 second timeout for conversion
+    };
+
+    try {
+        console.log(`🎵 Converting YouTube URL: ${url}`);
+        const response = await axios.request(options);
+        console.log(`✅ Conversion response:`, response.data);
+        return response.data;
+    } catch (error) {
+        console.error(`❌ YouTube conversion error:`, error.message);
+        throw error;
     }
 }
 
@@ -435,10 +463,10 @@ async function startBot() {
 
         const userId = msg.key.remoteJid;
         const senderName = msg.pushName || 'User';
-        
+
         // Get or create user session
         const userSession = getUserSession(userId);
-        
+
         console.log(`📨 Message #${userSession.messageCount} from ${senderName} (${userId})`);
 
         // Extract message text from different message types
@@ -480,6 +508,7 @@ async function startBot() {
 - *!help* : Show this help center
 - *!sticker* : Convert image/video/GIF to sticker
 - *!chat <prompt>* : Get AI-powered responses with memory
+- *!conv <youtube_url>* : Convert YouTube videos to MP3
 - *!aboutdev* : Live GitHub developer info with image
 - *!stats* : Show your usage statistics
 
@@ -513,6 +542,7 @@ async function startBot() {
 - !help : Get help info with image
 - !sticker : Convert image/video/GIF to sticker
 - !chat <prompt> : Get AI-powered responses with memory
+- !conv <youtube_url> : Convert YouTube videos to MP3
 - !aboutdev : Live GitHub developer info with image
 - !stats : Show your usage statistics
 
@@ -540,10 +570,10 @@ Use them in chat to try them out! 👌` })
             const joinedAgo = Math.floor((Date.now() - userSession.joinedAt) / 1000 / 60); // minutes
             const lastActiveAgo = Math.floor((Date.now() - userSession.lastActivity) / 1000); // seconds
             const userNumber = userId.split('@')[0];
-            
+
             // Get memory stats
             const memoryStats = await getMemoryStats(userNumber);
-            
+
             await sock.sendMessage(userId, {
                 text: `📊 *Your Bot Statistics*
 
@@ -597,9 +627,9 @@ Use them in chat to try them out! 👌` })
                 // Fetch live GitHub profile data
                 console.log(`🔄 Fetching live GitHub profile data for ${senderName}...`);
                 const githubProfile = await fetchGithubProfile();
-                
+
                 let developerImageBuffer;
-                
+
                 try {
                     console.log(`📥 Downloading developer image for user ${senderName}...`);
                     // Use GitHub avatar from profile data
@@ -640,11 +670,11 @@ Use them in chat to try them out! 👌` })
                     await sock.sendMessage(userId, {
                         text: developerInfoText
                     });
-                    
+
                     console.log(`✅ Developer info sent successfully to ${senderName} (text-only fallback with live GitHub data)`);
                 } catch (fallbackError) {
                     console.error(`❌ Complete fallback failed for ${senderName}:`, fallbackError);
-                    
+
                     // Final fallback with basic info
                     const basicInfo = `👨‍💻 *About Pasindu Madhuwantha (PasinduOG)*\n\n` +
                         `🌟 Backend Developer & Technology Enthusiast\n` +
@@ -797,9 +827,9 @@ Use them in chat to try them out! 👌` })
         }
 
         // Invalid command detection with video preview (GIF-like)
-        if (messageText.startsWith('!') && 
-            messageText !== '!commands' && 
-            messageText !== '!help' && 
+        if (messageText.startsWith('!') &&
+            messageText !== '!commands' &&
+            messageText !== '!help' &&
             messageText !== '!sticker' &&
             messageText !== '!aboutdev' &&
             messageText !== '!stats' &&
@@ -817,15 +847,16 @@ Use them in chat to try them out! 👌` })
             messageText !== '!alive' &&
             messageText !== '!uptime' &&
             messageText !== '!status' &&
-            !messageText.startsWith('!chat ')) {
-            
+            !messageText.startsWith('!chat ') &&
+            !messageText.startsWith('!conv ')) {
+
             console.log(`❌ Invalid command "${messageText}" from ${senderName}, sending video GIF response...`);
-            
+
             try {
                 console.log(`📂 Reading IRON-MAN video file for ${senderName}...`);
                 const ironmanVideoBuffer = fs.readFileSync('./src/ironman.mp4');
                 console.log(`📏 Video file size: ${(ironmanVideoBuffer.length / 1024).toFixed(2)} KB`);
-                
+
                 const invalidCommandMessage = `❌ *Invalid Command: "${messageText}"*\n\n` +
                     `🤖 Sir, that command is not recognized in my database.\n\n` +
                     `📝 Type *!commands* to show all commands\n` +
@@ -867,7 +898,7 @@ Use them in chat to try them out! 👌` })
                         console.log(`✅ Invalid command video sent successfully as document to ${senderName}`);
                     }
                 }
-                
+
             } catch (videoError) {
                 console.error(`🚨 All video methods failed for ${senderName}:`, videoError.message);
                 // Final fallback to static image
@@ -896,6 +927,87 @@ Use them in chat to try them out! 👌` })
                 await sock.sendMessage(userId, { text: "❌ Usage: !chat <prompt>" });
             } else {
                 await handleChatCommand(sock, msg, [prompt]);
+            }
+        }
+
+        // YouTube to MP3 conversion command
+        if (messageText.startsWith('!conv ')) {
+            const url = messageText.substring(6).trim(); // Remove '!conv ' and trim whitespace
+            
+            if (!url) {
+                await sock.sendMessage(userId, { 
+                    text: "❌ Usage: !conv <youtube_url>\n\n📌 Example: !conv https://www.youtube.com/watch?v=dQw4w9WgXcQ" 
+                });
+                return;
+            }
+
+            // Basic URL validation
+            if (!url.includes('youtube.com/watch') && !url.includes('youtu.be/')) {
+                await sock.sendMessage(userId, { 
+                    text: "❌ Please provide a valid YouTube URL\n\n📌 Supported formats:\n• https://www.youtube.com/watch?v=...\n• https://youtu.be/..." 
+                });
+                return;
+            }
+
+            // Check rate limiting
+            const rateCheck = checkRateLimit(userId, 'general');
+            if (!rateCheck.allowed) {
+                return sock.sendMessage(userId, { text: `⏰ ${rateCheck.reason}` });
+            }
+
+            // Check if user already has an active conversion process
+            if (activeProcesses.has(`${userId}_conv`)) {
+                return sock.sendMessage(userId, { text: "🎵 Please wait, I'm still processing your previous conversion request..." });
+            }
+
+            // Mark as active
+            activeProcesses.set(`${userId}_conv`, Date.now());
+
+            try {
+                console.log(`🎵 YouTube conversion requested by ${senderName}: ${url}`);
+                
+                // Send processing message
+                await sock.sendMessage(userId, { 
+                    text: `🎵 Converting YouTube video to MP3...\n⏳ This may take a few moments, please wait.\n\n🔗 URL: ${url}` 
+                });
+
+                // Convert YouTube to MP3
+                const result = await convertYouTubeToMP3(url);
+                
+                if (result && result.downloadUrl) {
+                    // Send success message with download link
+                    await sock.sendMessage(userId, {
+                        text: `✅ *Conversion Successful!*\n\n` +
+                              `🎵 *Title:* ${result.title || 'Unknown'}\n` +
+                              `⏱️ *Duration:* ${result.duration || 'Unknown'}\n` +
+                              `📥 *Download Link:* ${result.downloadUrl}\n\n` +
+                              `💡 Click the link above to download your MP3 file!\n` +
+                              `⚡ *Converted by IRON-MAN Bot*`
+                    });
+                    
+                    console.log(`✅ YouTube conversion successful for ${senderName}: ${result.title}`);
+                } else {
+                    await sock.sendMessage(userId, { 
+                        text: "❌ Conversion failed. The video might be private, unavailable, or too long." 
+                    });
+                }
+
+            } catch (error) {
+                console.error(`❌ YouTube conversion error for ${senderName}:`, error.message);
+                
+                let errorMessage = "❌ Failed to convert YouTube video to MP3.";
+                if (error.message.includes('timeout')) {
+                    errorMessage = "⏰ Conversion timed out. The video might be too long.";
+                } else if (error.response?.status === 429) {
+                    errorMessage = "🚫 Conversion service is busy. Please try again in a few moments.";
+                } else if (error.response?.status === 400) {
+                    errorMessage = "❌ Invalid YouTube URL or video is not available.";
+                }
+                
+                await sock.sendMessage(userId, { text: errorMessage });
+            } finally {
+                // Remove from active processes
+                activeProcesses.delete(`${userId}_conv`);
             }
         }
 
@@ -960,7 +1072,7 @@ Use them in chat to try them out! 👌` })
         if (messageText === '!memory') {
             const userNumber = userId.split('@')[0];
             const memoryStats = await getMemoryStats(userNumber);
-            
+
             if (memoryStats.totalMessages > 0) {
                 await sock.sendMessage(userId, {
                     text: `🧠 *Your AI Memory Statistics*
@@ -996,7 +1108,7 @@ The AI will remember your last 10 conversation exchanges for more personalized r
 
         if (messageText === '!forgetme' || messageText === '!clearcontext') {
             const userNumber = userId.split('@')[0];
-            
+
             try {
                 await clearAllMemory(userNumber);
                 await sock.sendMessage(userId, {

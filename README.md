@@ -26,6 +26,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
    - Send `hi` for a greeting
    - Send `!ping` to test bot responsiveness
    - Send `!chat what is AI?` for AI responses with memory
+   - Send `!conv https://www.youtube.com/watch?v=example` for YouTube to MP3 conversion
    - Send `!help` for all commands with image
    - Send `!commands` for organized command list
    - Send an image with `!sticker` to create stickers
@@ -48,6 +49,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 
 - 🤖 **Smart Greetings** - Responds to hi, hello, hey with Jarvis welcome message
 - 🧠 **AI-Powered chat with Memory** - Google Gemini AI integration with conversation context and personalized responses
+- 🎵 **YouTube to MP3 Converter** - Convert YouTube videos to downloadable MP3 files with metadata
 - 🧠 **Conversation Memory** - Remembers last 10 message exchanges for context-aware responses
 - ❓ **Enhanced Help System** - Interactive help center with IRON-MAN themed responses and comprehensive command guide
 - 🔧 **Quick Commands** - Instant status checks with `!ping`, `!info`, `!menu`, `!uptime` for better user experience
@@ -79,6 +81,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 - **`!commands`** - Show all available commands list with organized categories
 - **`!sticker`** - Convert image/video/GIF to sticker (static or animated)
 - **`!chat [message]`** - Get AI-powered responses with conversation memory
+- **`!conv [youtube_url]`** - Convert YouTube videos to MP3 format for download
 - **`!aboutdev`** - Get detailed developer information with live GitHub data and avatar
 - **`!stats`** - Show your bot usage statistics (messages sent, session info, rate limits)
 
@@ -103,6 +106,19 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
     - Remembers last 10 conversation exchanges for context
     - Personalized responses based on conversation history
     - Automatic memory cleanup to maintain optimal performance
+
+### 🎵 YouTube to MP3 Conversion Commands
+- **`!conv [youtube_url]`** - Convert YouTube videos to downloadable MP3 files
+  - Example: `!conv https://www.youtube.com/watch?v=dQw4w9WgXcQ`
+  - Example: `!conv https://youtu.be/dQw4w9WgXcQ`
+  - **Features**:
+    - Supports both youtube.com/watch and youtu.be short URLs
+    - Shows conversion progress with "🎵 Converting..." message
+    - Provides download link with video metadata (title, duration)
+    - Built-in URL validation and error handling
+    - Rate limiting to prevent spam requests
+    - Timeout handling for large videos
+    - User-friendly error messages for different failure scenarios
 
 ### 👨‍💻 Developer Info Commands
 - **`!aboutdev`** - Get detailed developer information with live GitHub data and avatar
@@ -402,15 +418,16 @@ GITHUB_USERNAME=PasinduOG
 1. **Basic greeting**: Send `hi` in WhatsApp
 2. **Bot status**: `!ping` or `!alive` to check if bot is responsive
 3. **AI test**: `!chat what is artificial intelligence?`
-4. **Memory check**: `!memory` to see your conversation memory stats
-5. **Help**: `!help` for bot information with image
-6. **Commands list**: `!commands` for all available commands
-7. **Developer info**: `!aboutdev` for live GitHub profile with avatar
-8. **Statistics**: `!stats` for your usage stats including memory
-9. **Bot info**: `!info` for bot version and details
-10. **Welcome menu**: `!menu` for new user welcome
-11. **Uptime**: `!uptime` for bot status and uptime
-12. **Memory management**: `!forgetme` to clear conversation memory
+4. **YouTube conversion**: `!conv https://www.youtube.com/watch?v=dQw4w9WgXcQ`
+5. **Memory check**: `!memory` to see your conversation memory stats
+6. **Help**: `!help` for bot information with image
+7. **Commands list**: `!commands` for all available commands
+8. **Developer info**: `!aboutdev` for live GitHub profile with avatar
+9. **Statistics**: `!stats` for your usage stats including memory
+10. **Bot info**: `!info` for bot version and details
+11. **Welcome menu**: `!menu` for new user welcome
+12. **Uptime**: `!uptime` for bot status and uptime
+13. **Memory management**: `!forgetme` to clear conversation memory
 
 ### Command Response Examples:
 
@@ -437,6 +454,11 @@ The bot uses Google Gemini AI with conversation memory to provide intelligent re
 **User**: `!forgetme`
 **Bot**: *🧠 Memory Cleared Successfully - All your conversation memory has been cleared*
 
+**YouTube Conversion Examples:**
+**User**: `!conv https://www.youtube.com/watch?v=dQw4w9WgXcQ`
+**Bot**: *🎵 Converting YouTube video to MP3... ⏳ This may take a few moments, please wait.*
+**Bot**: *✅ Conversion Successful! 🎵 Title: Rick Astley - Never Gonna Give You Up ⏱️ Duration: 3:33 📥 Download Link: [download_url]*
+
 ### Sticker Creation Examples:
 - Send any image with caption `!sticker` → Creates static sticker
 - Send any video/GIF with caption `!sticker` → Creates animated sticker  
@@ -447,9 +469,9 @@ The bot uses Google Gemini AI with conversation memory to provide intelligent re
 
 ## 🎯 Complete Command Reference
 
-### 📋 All Supported Commands (21 Total)
+### 📋 All Supported Commands (22 Total)
 **Primary Commands:**
-- `!help`, `!commands`, `!sticker`, `!chat <prompt>`, `!aboutdev`, `!stats`
+- `!help`, `!commands`, `!sticker`, `!chat <prompt>`, `!conv <youtube_url>`, `!aboutdev`, `!stats`
 
 **Memory Management Commands:**
 - `!memory`, `!forgetme`, `!clearcontext`
@@ -467,7 +489,7 @@ The bot uses Google Gemini AI with conversation memory to provide intelligent re
 - `hi`, `hello`, `hey`, `jarvis`
 
 ### 🔍 Invalid Command Detection
-The bot intelligently recognizes all 21+ valid commands and provides helpful video responses with command suggestions for any unrecognized commands starting with `!`.
+The bot intelligently recognizes all 22+ valid commands and provides helpful video responses with command suggestions for any unrecognized commands starting with `!`.
 
 ## 🎯 Current Status
 
@@ -484,12 +506,11 @@ The bot intelligently recognizes all 21+ valid commands and provides helpful vid
 ✅ Uptime Monitoring            ✅ Welcome Menu System           
 ✅ Comprehensive Command List    ✅ Memory Management Commands
 ✅ Context-Aware AI Responses    ✅ Automatic Memory Cleanup
-✅ MIT License Implementation    ✅ Clean Media Handling
+✅ YouTube to MP3 Conversion    ✅ MIT License Implementation    ✅ Clean Media Handling
 ✅ Optimized User Experience    ✅ Non-Intrusive Operation
 
 ### 🚀 Future Enhancements
 
-- 🎵 Music download integration
 - 📊 Usage analytics dashboard  
 - 🌐 Multi-language support
 - 🔊 Voice message processing
@@ -499,6 +520,7 @@ The bot intelligently recognizes all 21+ valid commands and provides helpful vid
 - 🤖 Advanced AI personality modes
 - 📈 Extended memory analytics
 - 🔄 Memory export/import features
+- 🎵 Playlist conversion support
 
 ## 🤝 Contributing
 
