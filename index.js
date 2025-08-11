@@ -20,8 +20,8 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 const startTime = Date.now();
 
 // Bot Version Configuration
-const BOT_VERSION = '1.4.0';
-const BOT_VERSION_NAME = 'AI Memory Edition';
+const BOT_VERSION = '1.5.0';
+const BOT_VERSION_NAME = 'AI Memory & Media Edition';
 const BOT_VERSION_FULL = `${BOT_VERSION} - ${BOT_VERSION_NAME}`;
 
 // GitHub Profile Configuration
@@ -390,10 +390,21 @@ async function convertYouTubeToMP3(url) {
     try {
         console.log(`🎵 Converting YouTube URL: ${url}`);
         const response = await axios.request(options);
-        console.log(`✅ Conversion response:`, response.data);
+        console.log(`✅ Conversion response status:`, response.status);
+        console.log(`✅ Conversion response data:`, JSON.stringify(response.data, null, 2));
+        
+        // Check if response has the expected structure
+        if (!response.data) {
+            throw new Error('Empty response from conversion service');
+        }
+        
         return response.data;
     } catch (error) {
         console.error(`❌ YouTube conversion error:`, error.message);
+        if (error.response) {
+            console.error(`❌ Response status:`, error.response.status);
+            console.error(`❌ Response data:`, JSON.stringify(error.response.data, null, 2));
+        }
         throw error;
     }
 }
@@ -528,7 +539,7 @@ async function startBot() {
 - jarvis : Formal greeting
 
 ⚙️ Bot created by *Pasindu OG Dev*
-📌 Version: 1.4.0 - AI Memory Edition
+📌 Version: 1.5.0 - AI Memory & Media Edition
 👤 Session: ${userSession.messageCount} messages`
             });
         }
@@ -974,22 +985,40 @@ Use them in chat to try them out! 👌` })
                 // Convert YouTube to MP3
                 const result = await convertYouTubeToMP3(url);
                 
-                if (result && result.downloadUrl) {
+                console.log(`🔍 Conversion result structure:`, JSON.stringify(result, null, 2));
+                
+                if (result && (result.downloadUrl || result.url)) {
+                    // Get the download URL (API might return either 'downloadUrl' or 'url')
+                    const downloadLink = result.downloadUrl || result.url;
+                    
                     // Send success message with download link
                     await sock.sendMessage(userId, {
                         text: `✅ *Conversion Successful!*\n\n` +
                               `🎵 *Title:* ${result.title || 'Unknown'}\n` +
-                              `⏱️ *Duration:* ${result.duration || 'Unknown'}\n` +
-                              `📥 *Download Link:* ${result.downloadUrl}\n\n` +
+                              `⏱️ *Duration:* ${result.duration ? `${Math.floor(result.duration / 60)}:${(result.duration % 60).toString().padStart(2, '0')}` : 'Unknown'}\n` +
+                              `📥 *Download Link:* ${downloadLink}\n\n` +
                               `💡 Click the link above to download your MP3 file!\n` +
                               `⚡ *Converted by IRON-MAN Bot*`
                     });
                     
                     console.log(`✅ YouTube conversion successful for ${senderName}: ${result.title}`);
                 } else {
+                    // More detailed error message based on response
+                    let errorDetail = "The video might be private, unavailable, or too long.";
+                    if (result) {
+                        if (result.error) {
+                            errorDetail = `API Error: ${result.error}`;
+                        } else if (result.message) {
+                            errorDetail = `Service Message: ${result.message}`;
+                        } else {
+                            errorDetail = `Unexpected response format. Missing download URL.`;
+                        }
+                    }
+                    
                     await sock.sendMessage(userId, { 
-                        text: "❌ Conversion failed. The video might be private, unavailable, or too long." 
+                        text: `❌ Conversion failed. ${errorDetail}\n\n💡 Try with a different video or check if the URL is correct.` 
                     });
+                    console.log(`❌ Conversion failed for ${senderName}. Result:`, result);
                 }
 
             } catch (error) {
@@ -1002,6 +1031,12 @@ Use them in chat to try them out! 👌` })
                     errorMessage = "🚫 Conversion service is busy. Please try again in a few moments.";
                 } else if (error.response?.status === 400) {
                     errorMessage = "❌ Invalid YouTube URL or video is not available.";
+                } else if (error.response?.status === 401) {
+                    errorMessage = "🔑 API key authentication failed. Please check the API configuration.";
+                } else if (error.response?.status === 403) {
+                    errorMessage = "🚫 API access forbidden. The API key might be invalid or suspended.";
+                } else if (error.response?.status >= 500) {
+                    errorMessage = "🔧 Conversion service is experiencing technical difficulties. Please try again later.";
                 }
                 
                 await sock.sendMessage(userId, { text: errorMessage });
@@ -1025,10 +1060,10 @@ Use them in chat to try them out! 👌` })
         if (messageText === '!info' || messageText === '!about' || messageText === '!version') {
             await sock.sendMessage(userId, {
                 text: `🤖 *IRON-MAN Bot Information*\n\n` +
-                    `🔥 Version: 1.4.0 - AI Memory Edition\n` +
+                    `🔥 Version: 1.5.0 - AI Memory & Media Edition\n` +
                     `👨‍💻 Developer: Pasindu Madhuwantha (PasinduOG)\n` +
                     `⚙️ Built with: Node.js, Baileys, MongoDB\n` +
-                    `🌟 Features: AI Chat with Memory, Sticker Creation, Session Persistence\n\n` +
+                    `🌟 Features: AI Chat with Memory, Sticker Creation, YouTube to MP3, Session Persistence\n\n` +
                     `📝 Type *!help* for detailed help\n` +
                     `👨‍💻 Type *!aboutdev* for developer info with GitHub data`
             });
