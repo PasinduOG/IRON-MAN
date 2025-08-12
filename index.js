@@ -206,10 +206,16 @@ const MAX_STICKER_DURATION_COMPRESSED = 6; // Maximum duration for compressed st
 // AI Chat Configuration
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'your-gemini-api-key-here';
 
-// Multi-user management
+// Multi-user management with enhanced concurrency
 const userSessions = new Map(); // Store user session data
 const userRateLimits = new Map(); // Store user rate limiting data
 const activeProcesses = new Map(); // Track active processing per user
+const userRequestQueues = new Map(); // Queue multiple requests per user
+
+// Enhanced AI processing configuration
+const MAX_CONCURRENT_AI_REQUESTS = 100; // Maximum concurrent AI requests globally
+const MAX_USER_QUEUE_SIZE = 5; // Maximum queued requests per user
+let globalActiveAIRequests = 0; // Track global AI request count
 
 // Rate limiting configuration
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
@@ -253,7 +259,7 @@ function checkRateLimit(userId, type = 'general') {
     return { allowed: true };
 }
 
-// User session helper
+// Enhanced user session helper with queue support
 function getUserSession(userId) {
     if (!userSessions.has(userId)) {
         userSessions.set(userId, {
@@ -271,6 +277,34 @@ function getUserSession(userId) {
     return session;
 }
 
+// Queue management helper
+function getUserQueue(userId) {
+    if (!userRequestQueues.has(userId)) {
+        userRequestQueues.set(userId, []);
+    }
+    return userRequestQueues.get(userId);
+}
+
+// Process next request in user's queue
+async function processUserQueue(userId, client) {
+    const queue = getUserQueue(userId);
+    if (queue.length === 0) return;
+
+    const nextRequest = queue.shift();
+    if (nextRequest) {
+        await handleAIRequestInternal(
+            client, 
+            nextRequest.msg, 
+            nextRequest.args, 
+            nextRequest.userId, 
+            nextRequest.userNumber, 
+            nextRequest.prompt,
+            nextRequest.chatId,
+            nextRequest.isGroup
+        );
+    }
+}
+
 // Clean up inactive sessions (run periodically)
 function cleanupInactiveSessions() {
     const now = Date.now();
@@ -283,6 +317,7 @@ function cleanupInactiveSessions() {
             userRateLimits.delete(`${userId}_ai`);
             userRateLimits.delete(`${userId}_sticker`);
             activeProcesses.delete(userId);
+            userRequestQueues.delete(userId); // Clean up queue
         }
     }
 }
@@ -290,25 +325,80 @@ function cleanupInactiveSessions() {
 // Run cleanup every 10 minutes
 setInterval(cleanupInactiveSessions, 10 * 60 * 1000);
 
-// Enhanced AI Chat Handler with MongoDB memory integration
+// Enhanced AI Chat Handler with concurrent processing support
 async function handleChatCommand(client, msg, args) {
-    const userId = msg.key.remoteJid;
-    const userNumber = userId.split('@')[0]; // Extract phone number from WhatsApp ID
+    const chatId = msg.key.remoteJid;
+    const isGroup = chatId.endsWith('@g.us');
+    const actualSender = isGroup ? msg.key.participant : chatId;
+    const userId = actualSender; // Use actual sender for individual tracking
+    const userNumber = userId.split('@')[0];
     const prompt = args.join(" ");
 
-    if (!prompt) return client.sendMessage(userId, { text: "❌ Usage: !chat <prompt>" });
+    if (!prompt) {
+        const errorMsg = isGroup 
+            ? `❌ @${userNumber} Usage: !chat <prompt>`
+            : "❌ Usage: !chat <prompt>";
+        return client.sendMessage(chatId, { 
+            text: errorMsg,
+            mentions: isGroup ? [userId] : undefined
+        });
+    }
 
-    // Check rate limiting
+    // Check rate limiting (per individual user)
     const rateCheck = checkRateLimit(userId, 'ai');
     if (!rateCheck.allowed) {
-        return client.sendMessage(userId, { text: `⏰ ${rateCheck.reason}` });
+        const rateLimitMsg = isGroup 
+            ? `⏰ @${userNumber} ${rateCheck.reason}`
+            : `⏰ ${rateCheck.reason}`;
+        return client.sendMessage(chatId, { 
+            text: rateLimitMsg,
+            mentions: isGroup ? [userId] : undefined
+        });
     }
 
-    // Check if user already has an active AI request
-    if (activeProcesses.has(`${userId}_ai`)) {
-        return client.sendMessage(userId, { text: "🤖 Please wait, I'm still processing your previous request..." });
-    }
+    const userQueue = getUserQueue(userId);
+    
+    // Check if we can process immediately or need to queue
+    if (globalActiveAIRequests < MAX_CONCURRENT_AI_REQUESTS && userQueue.length === 0) {
+        // Process immediately
+        await handleAIRequestInternal(client, msg, args, userId, userNumber, prompt, chatId, isGroup);
+    } else {
+        // Check queue size limit
+        if (userQueue.length >= MAX_USER_QUEUE_SIZE) {
+            const queueFullMsg = isGroup 
+                ? `⏰ @${userNumber} Your request queue is full (${MAX_USER_QUEUE_SIZE} requests). Please wait for current requests to complete.`
+                : `⏰ Your request queue is full (${MAX_USER_QUEUE_SIZE} requests). Please wait for current requests to complete.`;
+            return client.sendMessage(chatId, { 
+                text: queueFullMsg,
+                mentions: isGroup ? [userId] : undefined
+            });
+        }
 
+        // Add to queue
+        userQueue.push({ msg, args, userId, userNumber, prompt, chatId, isGroup });
+        
+        // Send queue position feedback
+        const queuePosition = userQueue.length;
+        const queueMsg = isGroup 
+            ? `🔄 @${userNumber} *Request queued!*\n\n📊 Position in queue: ${queuePosition}\n⚡ Active requests: ${globalActiveAIRequests}/${MAX_CONCURRENT_AI_REQUESTS}\n\n⏳ Your request will be processed shortly...`
+            : `🔄 *Request queued!*\n\n📊 Position in queue: ${queuePosition}\n⚡ Active requests: ${globalActiveAIRequests}/${MAX_CONCURRENT_AI_REQUESTS}\n\n⏳ Your request will be processed shortly...`;
+        await client.sendMessage(chatId, { 
+            text: queueMsg,
+            mentions: isGroup ? [userId] : undefined
+        });
+    }
+}
+
+// Internal AI request handler for actual processing
+async function handleAIRequestInternal(client, msg, args, userId, userNumber, prompt, chatId, isGroup) {
+    // If chatId not provided, extract from msg (for backward compatibility)
+    if (!chatId) {
+        chatId = msg.key.remoteJid;
+        isGroup = chatId.endsWith('@g.us');
+    }
+    // Increment global counter
+    globalActiveAIRequests++;
+    
     // Mark as active
     activeProcesses.set(`${userId}_ai`, Date.now());
 
@@ -316,8 +406,8 @@ async function handleChatCommand(client, msg, args) {
     const session = getUserSession(userId);
 
     try {
-        // Show typing indicator instead of thinking message
-        await client.sendPresenceUpdate('composing', userId);
+        // Show typing indicator
+        await client.sendPresenceUpdate('composing', chatId);
 
         // Retrieve user's conversation memory
         const memory = await getMemory(userNumber);
@@ -325,7 +415,7 @@ async function handleChatCommand(client, msg, args) {
         // Build conversation context with memory
         const conversationContext = buildConversationContext(memory, prompt);
 
-        console.log(`🧠 Using ${memory.length} previous messages for context (User: ${userNumber})`);
+        console.log(`🧠 Processing AI request for user ${userNumber} (${globalActiveAIRequests} active requests)`);
 
         const res = await axios.post(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -342,11 +432,16 @@ async function handleChatCommand(client, msg, args) {
         const aiReply = res.data.candidates?.[0]?.content?.parts?.[0]?.text || "🤖 No response.";
 
         // Stop typing indicator before sending response
-        await client.sendPresenceUpdate('available', userId);
+        await client.sendPresenceUpdate('available', chatId);
 
-        // Send response to user
-        await client.sendMessage(userId, {
-            text: `🧠 *Response:*\n\n${aiReply}`
+        // Send response with group awareness
+        const responseText = isGroup 
+            ? `🧠 @${userNumber} *Response:*\n\n${aiReply}`
+            : `🧠 *Response:*\n\n${aiReply}`;
+        
+        await client.sendMessage(chatId, {
+            text: responseText,
+            mentions: isGroup ? [userId] : undefined
         });
 
         // Update memory with both user message and AI reply
@@ -372,8 +467,14 @@ async function handleChatCommand(client, msg, args) {
 
         client.sendMessage(userId, { text: errorMessage });
     } finally {
+        // Decrement global counter
+        globalActiveAIRequests--;
+        
         // Remove from active processes
         activeProcesses.delete(`${userId}_ai`);
+        
+        // Process next request in this user's queue
+        setTimeout(() => processUserQueue(userId, client), 100);
     }
 }
 
@@ -478,13 +579,18 @@ async function startBot() {
         // Ignore messages from the bot itself to prevent infinite loops
         if (msg.key.fromMe) return;
 
-        const userId = msg.key.remoteJid;
+        const chatId = msg.key.remoteJid;
+        const isGroup = chatId.endsWith('@g.us');
+        const actualSender = isGroup ? msg.key.participant : chatId;
+        const userId = actualSender; // Use actual sender for individual tracking
         const senderName = msg.pushName || 'User';
 
-        // Get or create user session
+        // Get or create user session (individual user tracking even in groups)
         const userSession = getUserSession(userId);
 
-        console.log(`📨 Message #${userSession.messageCount} from ${senderName} (${userId})`);
+        // Log message with group context
+        const contextInfo = isGroup ? `${senderName} in group ${chatId.split('@')[0]}` : senderName;
+        console.log(`📨 Message #${userSession.messageCount} from ${contextInfo} (${userId})`);
 
         // Extract message text from different message types
         const messageText = msg.message?.conversation ||
@@ -494,11 +600,14 @@ async function startBot() {
             msg.message?.gifMessage?.caption ||
             '';
 
-        // Check general rate limiting for commands
+        // Check general rate limiting for commands (per individual user)
         if (messageText.startsWith('!')) {
             const rateCheck = checkRateLimit(userId, 'general');
             if (!rateCheck.allowed) {
-                return sock.sendMessage(userId, { text: `⏰ ${rateCheck.reason}` });
+                return sock.sendMessage(chatId, { 
+                    text: `⏰ @${userId.split('@')[0]} ${rateCheck.reason}`,
+                    mentions: [userId]
+                });
             }
         }
 
@@ -506,19 +615,29 @@ async function startBot() {
         const greetingRegex = /^(jarvis)(\s|$)/i;
 
         if (welcomeRegex.test(messageText)) {
-            sock.sendMessage(userId, { text: welcomeMessage });
+            const personalizedWelcome = isGroup 
+                ? `Hello @${userId.split('@')[0]}! 👋 ${welcomeMessage}`
+                : welcomeMessage;
+            sock.sendMessage(chatId, { 
+                text: personalizedWelcome,
+                mentions: isGroup ? [userId] : undefined
+            });
         }
 
         if (greetingRegex.test(messageText)) {
-            sock.sendMessage(userId, { text: greetingMessge });
+            const personalizedGreeting = isGroup 
+                ? `@${userId.split('@')[0]} ${greetingMessge}`
+                : greetingMessge;
+            sock.sendMessage(chatId, { 
+                text: personalizedGreeting,
+                mentions: isGroup ? [userId] : undefined
+            });
         }
 
         if (messageText === '!help') {
             const imageBuffer = fs.readFileSync('./src/ironman.jpg') // your image path
-
-            await sock.sendMessage(userId, {
-                image: imageBuffer,
-                caption: `🤖 *IRON-MAN Bot Help Center*
+            
+            const helpCaption = `🤖 *IRON-MAN Bot Help Center*
 
 📋 *Primary Commands:*
 - *!commands* : List all commands
@@ -536,23 +655,24 @@ async function startBot() {
 
 🔧 *Quick Commands:*
 - *!ping* : Check bot status
-- *!info* : Bot information
-- *!menu* : Welcome menu
-- *!status* : Bot uptime and status
 
-💬 *Natural Language:*
-- hi, hello, hey : Casual Jarvis greeting
-- jarvis : Formal greeting
+${isGroup ? `\n👥 *Group Features:*
+- Each user has individual memory & stats
+- Personal rate limits per user
+- Mentions in responses for clarity
+- Individual AI request queues
 
-⚙️ Bot created by *Pasindu OG Dev*
-📌 Version: 1.5.0 - AI Memory & Media Edition
-👤 Session: ${userSession.messageCount} messages`
+💡 *Tip:* @${userId.split('@')[0]} Your commands and conversations are tracked individually even in groups!` : ''}`;
+
+            await sock.sendMessage(chatId, {
+                image: imageBuffer,
+                caption: helpCaption,
+                mentions: isGroup ? [userId] : undefined
             });
         }
 
         if (messageText === '!commands') {
-            await sock.sendMessage(userId, {
-                text: `📝 *All Available Commands:*
+            const commandsText = `📝 *All Available Commands:*
 
 📋 *Primary Commands:*
 - !commands : Show all commands
@@ -578,9 +698,16 @@ async function startBot() {
 - hi, hello, hey : Casual Jarvis greeting
 - jarvis : Formal greeting
 
-👤 Your session: ${userSession.messageCount} messages
-🧠 AI Memory: Enabled for personalized conversations
-Use them in chat to try them out! 👌` })
+⚙️ Bot created by *Pasindu OG Dev*
+📌 Version: 1.5.0 - AI Memory & Media Edition
+👤 Session: ${userSession.messageCount} messages
+
+${isGroup ? `\n👥 *Group Mode:* @${userId.split('@')[0]} Your data is tracked individually!` : ''}`;
+
+            await sock.sendMessage(chatId, {
+                text: commandsText,
+                mentions: isGroup ? [userId] : undefined
+            });
         }
 
         if (messageText === '!stats') {
@@ -591,8 +718,7 @@ Use them in chat to try them out! 👌` })
             // Get memory stats
             const memoryStats = await getMemoryStats(userNumber);
 
-            await sock.sendMessage(userId, {
-                text: `📊 *Your Bot Statistics*
+            const statsText = `📊 *Your Bot Statistics*
 
 👤 *User Session:*
 • Messages sent: ${userSession.messageCount}
@@ -615,7 +741,13 @@ Use them in chat to try them out! 👌` })
 • AI requests: Available  
 • Sticker creation: Available
 
-🎯 Keep chatting with IRON-MAN Bot for smarter AI conversations!`
+🎯 Keep chatting with IRON-MAN Bot for smarter AI conversations!
+
+${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are personal to you, not the group!` : ''}`;
+
+            await sock.sendMessage(chatId, {
+                text: statsText,
+                mentions: isGroup ? [userId] : undefined
             });
         }
 
@@ -941,7 +1073,13 @@ Use them in chat to try them out! 👌` })
         if (messageText.startsWith('!chat ')) {
             const prompt = messageText.substring(6).trim(); // Remove '!chat ' and trim whitespace
             if (!prompt) {
-                await sock.sendMessage(userId, { text: "❌ Usage: !chat <prompt>" });
+                const errorMsg = isGroup 
+                    ? `❌ @${userId.split('@')[0]} Usage: !chat <prompt>`
+                    : "❌ Usage: !chat <prompt>";
+                await sock.sendMessage(chatId, { 
+                    text: errorMsg,
+                    mentions: isGroup ? [userId] : undefined
+                });
             } else {
                 await handleChatCommand(sock, msg, [prompt]);
             }
