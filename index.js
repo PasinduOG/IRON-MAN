@@ -206,27 +206,39 @@ const MAX_STICKER_DURATION_COMPRESSED = 6; // Maximum duration for compressed st
 // AI Chat Configuration
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY || 'your-gemini-api-key-here';
 
-// Multi-user management with enhanced concurrency
+// Multi-user management with enhanced concurrency and optimization
 const userSessions = new Map(); // Store user session data
 const userRateLimits = new Map(); // Store user rate limiting data
 const activeProcesses = new Map(); // Track active processing per user
 const userRequestQueues = new Map(); // Queue multiple requests per user
 const memoryCache = new Map(); // Cache user memory for faster access
+const downloadQueue = new Map(); // Track concurrent downloads per user
 
-// Enhanced AI processing configuration
-const MAX_CONCURRENT_AI_REQUESTS = 100; // Maximum concurrent AI requests globally
-const MAX_USER_QUEUE_SIZE = 5; // Maximum queued requests per user
+// Enhanced AI processing configuration - Optimized for speed
+const MAX_CONCURRENT_AI_REQUESTS = 150; // Increased for better throughput
+const MAX_USER_QUEUE_SIZE = 3; // Reduced queue size for faster processing
 let globalActiveAIRequests = 0; // Track global AI request count
 
-// Performance optimization configuration
-const MEMORY_CACHE_TTL = 30000; // Cache memory for 30 seconds
-const TYPING_INDICATOR_DELAY = 100; // Minimal delay for typing indicators
+// Add connection pooling for better performance
+const connectionPool = new Map();
+const MAX_CONNECTION_POOL_SIZE = 10;
 
-// Rate limiting configuration
-const RATE_LIMIT_WINDOW = 60000; // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 10; // Max 10 requests per minute per user
-const AI_COOLDOWN = 3000; // 3 seconds between AI requests per user
-const STICKER_COOLDOWN = 5000; // 5 seconds between sticker requests per user
+// Performance optimization configuration - Enhanced for speed
+const MEMORY_CACHE_TTL = 60000; // Extended cache to 60 seconds for better performance
+const TYPING_INDICATOR_DELAY = 50; // Reduced delay for faster response feeling
+const CONCURRENT_DOWNLOAD_LIMIT = 3; // Limit concurrent media downloads
+const RESPONSE_TIMEOUT = 12000; // Reduced from 15s to 12s for faster timeouts
+const STICKER_PROCESSING_TIMEOUT = 20000; // Specific timeout for sticker processing
+
+// Rate limiting configuration - Optimized for performance
+const RATE_LIMIT_WINDOW = 45000; // Reduced to 45 seconds for faster reset
+const MAX_REQUESTS_PER_WINDOW = 15; // Increased to 15 requests for better UX
+const AI_COOLDOWN = 2000; // Reduced to 2 seconds for faster AI responses
+const STICKER_COOLDOWN = 3000; // Reduced to 3 seconds for faster sticker generation
+
+// Memory optimization settings
+const MAX_MEMORY_CACHE_SIZE = 500; // Limit cache size to prevent memory leaks
+const CLEANUP_INTERVAL = 5 * 60 * 1000; // Cleanup every 5 minutes instead of 10
 
 // Rate limiting helper
 function checkRateLimit(userId, type = 'general') {
@@ -290,7 +302,7 @@ function getUserQueue(userId) {
     return userRequestQueues.get(userId);
 }
 
-// Fast memory retrieval with caching
+// Fast memory retrieval with optimized caching
 async function getMemoryFast(userNumber) {
     const cacheKey = `memory_${userNumber}`;
     const cached = memoryCache.get(cacheKey);
@@ -298,6 +310,11 @@ async function getMemoryFast(userNumber) {
     // Return cached memory if still valid
     if (cached && (Date.now() - cached.timestamp) < MEMORY_CACHE_TTL) {
         return cached.data;
+    }
+    
+    // Check cache size and clean if necessary
+    if (memoryCache.size > MAX_MEMORY_CACHE_SIZE) {
+        cleanupMemoryCache();
     }
     
     // Fetch from database and cache
@@ -312,6 +329,27 @@ async function getMemoryFast(userNumber) {
         console.error(`Memory fetch error for ${userNumber}:`, error.message);
         return []; // Return empty array on error
     }
+}
+
+// Optimized async memory update to prevent blocking
+async function updateMemoryAsync(userNumber, userMessage, aiReply) {
+    // Non-blocking memory update
+    setImmediate(async () => {
+        try {
+            await updateMemory(userNumber, userMessage, aiReply);
+            await clearOldMemory(userNumber, 10);
+            
+            // Update cache immediately for fast subsequent access
+            const cacheKey = `memory_${userNumber}`;
+            const updatedMemory = await getMemory(userNumber);
+            memoryCache.set(cacheKey, {
+                data: updatedMemory,
+                timestamp: Date.now()
+            });
+        } catch (error) {
+            console.error(`Async memory update error for ${userNumber}:`, error.message);
+        }
+    });
 }
 
 // Process next request in user's queue
@@ -334,11 +372,12 @@ async function processUserQueue(userId, client) {
     }
 }
 
-// Clean up inactive sessions (run periodically)
+// Optimized cleanup functions with better performance
 function cleanupInactiveSessions() {
     const now = Date.now();
-    const INACTIVE_THRESHOLD = 30 * 60 * 1000; // 30 minutes
+    const INACTIVE_THRESHOLD = 20 * 60 * 1000; // Reduced to 20 minutes for better memory management
 
+    let cleanedCount = 0;
     for (const [userId, session] of userSessions.entries()) {
         if (now - session.lastActivity > INACTIVE_THRESHOLD) {
             userSessions.delete(userId);
@@ -346,26 +385,50 @@ function cleanupInactiveSessions() {
             userRateLimits.delete(`${userId}_ai`);
             userRateLimits.delete(`${userId}_sticker`);
             activeProcesses.delete(userId);
-            userRequestQueues.delete(userId); // Clean up queue
-            memoryCache.delete(`memory_${userId.split('@')[0]}`); // Clean up memory cache
+            userRequestQueues.delete(userId);
+            downloadQueue.delete(userId);
+            memoryCache.delete(`memory_${userId.split('@')[0]}`);
+            cleanedCount++;
         }
+    }
+    if (cleanedCount > 0) {
+        console.log(`🧹 Cleaned up ${cleanedCount} inactive sessions`);
     }
 }
 
-// Clean up expired memory cache entries
+// Enhanced memory cache cleanup with size limits
 function cleanupMemoryCache() {
     const now = Date.now();
+    let cleanedCount = 0;
+    
+    // Clean expired entries first
     for (const [key, value] of memoryCache.entries()) {
         if (now - value.timestamp > MEMORY_CACHE_TTL) {
             memoryCache.delete(key);
+            cleanedCount++;
         }
+    }
+    
+    // If still over limit, remove oldest entries
+    if (memoryCache.size > MAX_MEMORY_CACHE_SIZE) {
+        const entries = Array.from(memoryCache.entries());
+        entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
+        
+        const toRemove = memoryCache.size - MAX_MEMORY_CACHE_SIZE + 50; // Remove extra for buffer
+        for (let i = 0; i < toRemove && i < entries.length; i++) {
+            memoryCache.delete(entries[i][0]);
+            cleanedCount++;
+        }
+    }
+    
+    if (cleanedCount > 0) {
+        console.log(`🧹 Cleaned up ${cleanedCount} memory cache entries`);
     }
 }
 
-// Run cleanup every 10 minutes
-setInterval(cleanupInactiveSessions, 10 * 60 * 1000);
-// Run memory cache cleanup every 2 minutes
-setInterval(cleanupMemoryCache, 2 * 60 * 1000);
+// Optimized cleanup intervals
+setInterval(cleanupInactiveSessions, CLEANUP_INTERVAL);
+setInterval(cleanupMemoryCache, 2 * 60 * 1000); // Every 2 minutes
 
 // Enhanced AI Chat Handler with concurrent processing support
 async function handleChatCommand(client, msg, args) {
@@ -431,7 +494,7 @@ async function handleChatCommand(client, msg, args) {
     }
 }
 
-// Internal AI request handler for actual processing
+// Internal AI request handler for actual processing - Optimized for speed
 async function handleAIRequestInternal(client, msg, args, userId, userNumber, prompt, chatId, isGroup) {
     // If chatId not provided, extract from msg (for backward compatibility)
     if (!chatId) {
@@ -448,36 +511,54 @@ async function handleAIRequestInternal(client, msg, args, userId, userNumber, pr
     const session = getUserSession(userId);
 
     try {
-        // Show typing indicator (non-blocking)
-        client.sendPresenceUpdate('composing', chatId).catch(() => {}); // Don't wait for this
+        // Show typing indicator (non-blocking and optimized)
+        setImmediate(() => {
+            client.sendPresenceUpdate('composing', chatId).catch(() => {});
+        });
 
         // Parallel operations for better performance
+        const memoryPromise = getMemoryFast(userNumber);
+        
+        // Start memory fetch and typing indicator in parallel
         const [memory] = await Promise.all([
-            getMemoryFast(userNumber), // Use cached memory for speed
-            // Start typing indicator in parallel
+            memoryPromise,
+            new Promise(resolve => setTimeout(resolve, TYPING_INDICATOR_DELAY)) // Minimal delay
         ]);
 
-        // Build conversation context with memory
+        // Build conversation context with memory (optimized)
         const conversationContext = buildConversationContext(memory, prompt);
 
         console.log(`🧠 Processing AI request for user ${userNumber} (${globalActiveAIRequests} active requests)`);
 
+        // Optimized API request with better timeout handling
         const res = await axios.post(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
             {
                 contents: [{
-                    parts: [{
-                        text: conversationContext
-                    }]
-                }]
+                    parts: [{ text: conversationContext }]
+                }],
+                generationConfig: {
+                    temperature: 0.7,
+                    maxOutputTokens: 1024,
+                    topP: 0.8,
+                    topK: 40
+                }
             },
-            { timeout: 15000 } // Reduced timeout to 15 seconds for faster response
+            {
+                timeout: RESPONSE_TIMEOUT,
+                headers: {
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'IRON-MAN-Bot/1.5.0'
+                }
+            }
         );
 
         const aiReply = res.data.candidates?.[0]?.content?.parts?.[0]?.text || "🤖 No response.";
 
         // Stop typing indicator (non-blocking)
-        client.sendPresenceUpdate('available', chatId).catch(() => {});
+        setImmediate(() => {
+            client.sendPresenceUpdate('available', chatId).catch(() => {});
+        });
 
         // Send response with group awareness
         const responseText = isGroup 
@@ -489,14 +570,8 @@ async function handleAIRequestInternal(client, msg, args, userId, userNumber, pr
             mentions: isGroup ? [userId] : undefined
         });
 
-        // Update memory asynchronously (don't wait for it) and invalidate cache
-        Promise.all([
-            updateMemory(userNumber, prompt, aiReply),
-            clearOldMemory(userNumber, 10)
-        ]).then(() => {
-            // Invalidate memory cache after update
-            memoryCache.delete(`memory_${userNumber}`);
-        }).catch(err => console.error('Memory update error:', err));
+        // Update memory asynchronously for better performance
+        updateMemoryAsync(userNumber, prompt, aiReply);
 
         console.log(`✅ AI response sent to user ${session.id} (Message #${session.messageCount}) - memory updating in background`);
 
@@ -504,7 +579,9 @@ async function handleAIRequestInternal(client, msg, args, userId, userNumber, pr
         console.error(`❌ Gemini error for user ${userId}:`, err.message);
 
         // Stop typing indicator on error (non-blocking)
-        client.sendPresenceUpdate('available', chatId).catch(() => {});
+        setImmediate(() => {
+            client.sendPresenceUpdate('available', chatId).catch(() => {});
+        });
 
         let errorMessage = "❌ Error with Gemini AI.";
         if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
@@ -530,8 +607,8 @@ async function handleAIRequestInternal(client, msg, args, userId, userNumber, pr
         // Remove from active processes
         activeProcesses.delete(`${userId}_ai`);
         
-        // Process next request in this user's queue
-        setTimeout(() => processUserQueue(userId, client), 100);
+        // Process next request in this user's queue (optimized delay)
+        setImmediate(() => processUserQueue(userId, client));
     }
 }
 
@@ -548,7 +625,7 @@ async function convertYouTubeToMP3(url) {
         data: {
             url: url
         },
-        timeout: 60000 // 60 second timeout for conversion
+        timeout: 45000 // Reduced timeout to 45 seconds for faster response
     };
 
     try {
@@ -1485,28 +1562,28 @@ Your session statistics and other data remain unchanged.`,
     return sock;
 }
 
-// Helper: Download image media buffer
+// Helper: Optimized image media download with streaming
 async function downloadMedia(sock, message) {
     const stream = await downloadContentFromMessage(message, 'image');
-    let buffer = Buffer.from([]);
+    const chunks = [];
 
     for await (const chunk of stream) {
-        buffer = Buffer.concat([buffer, chunk]);
+        chunks.push(chunk);
     }
 
-    return buffer;
+    return Buffer.concat(chunks);
 }
 
-// Helper: Download video/GIF media buffer
+// Helper: Optimized video/GIF media download with streaming
 async function downloadVideoMedia(sock, message, mediaType = 'video') {
     const stream = await downloadContentFromMessage(message, mediaType);
-    let buffer = Buffer.from([]);
+    const chunks = [];
 
     for await (const chunk of stream) {
-        buffer = Buffer.concat([buffer, chunk]);
+        chunks.push(chunk);
     }
 
-    return buffer;
+    return Buffer.concat(chunks);
 }
 
 // Helper: Convert video/GIF to animated WebP sticker
@@ -1548,35 +1625,41 @@ async function convertToAnimatedSticker(inputPath, outputPath, maxDuration = 6) 
     });
 }
 
-// Helper: Ultra-compressed conversion for large files
-async function convertToAnimatedStickerUltraCompressed(inputPath, outputPath, maxDuration = 4) {
+// Helper: Ultra-compressed conversion optimized for speed
+async function convertToAnimatedStickerUltraCompressed(inputPath, outputPath, maxDuration = 3) {
     return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+            reject(new Error('Conversion timeout'));
+        }, STICKER_PROCESSING_TIMEOUT);
+
         ffmpeg(inputPath)
             .inputOptions([
-                '-t', maxDuration.toString(),  // Use configurable max duration
+                '-t', maxDuration.toString(),  // Reduced max duration for faster processing
                 '-ss', '0'
             ])
             .outputOptions([
-                '-vf', 'scale=400:400:force_original_aspect_ratio=decrease,fps=12', // Moderate scaling with original ratio
+                '-vf', 'scale=320:320:force_original_aspect_ratio=decrease,fps=10', // Reduced size and fps for speed
                 '-c:v', 'libwebp',
-                '-quality', '40',        // Balanced quality
+                '-quality', '35',        // Reduced quality for faster processing
                 '-preset', 'picture',
                 '-loop', '0',
-                '-compression_level', '6',
-                '-method', '6',
+                '-compression_level', '4', // Reduced compression for speed
+                '-method', '4',            // Faster method
                 '-an'
             ])
             .format('webp')
             .on('start', (commandLine) => {
                 console.log('🎬 Ultra-compressed FFmpeg command: ' + commandLine);
                 console.log(`⏱️ Ultra-compressed duration set to: ${maxDuration} seconds`);
-                console.log('📐 Using moderate scaling (400x400 max) preserving aspect ratio');
+                console.log('📐 Using optimized scaling (320x320 max) for speed');
             })
             .on('end', () => {
+                clearTimeout(timeout);
                 console.log('✅ Ultra-compressed animated sticker conversion completed');
                 resolve(true);
             })
             .on('error', (err) => {
+                clearTimeout(timeout);
                 console.error('❌ Ultra-compressed conversion failed:', err);
                 reject(err);
             })

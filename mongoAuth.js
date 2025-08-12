@@ -8,14 +8,27 @@ class MongoAuthState {
         this.collectionName = collectionName;
         this.client = null;
         this.collection = null;
+        this.connectionOptions = {
+            maxPoolSize: 5,              // Smaller pool for auth operations
+            minPoolSize: 1,
+            maxIdleTimeMS: 30000,
+            serverSelectionTimeoutMS: 3000,
+            connectTimeoutMS: 5000,
+            retryWrites: true,
+            writeConcern: { w: 1, j: false } // Faster writes for auth
+        };
     }
 
     async connect() {
         try {
-            this.client = new MongoClient(this.mongoUri);
+            this.client = new MongoClient(this.mongoUri, this.connectionOptions);
             await this.client.connect();
             const db = this.client.db(this.dbName);
             this.collection = db.collection(this.collectionName);
+            
+            // Create index for better performance
+            await this.collection.createIndex({ _id: 1 }, { background: true });
+            
             console.log('✅ Connected to MongoDB for auth storage');
         } catch (error) {
             console.error('❌ MongoDB connection failed:', error);
@@ -32,7 +45,10 @@ class MongoAuthState {
 
     async readCreds() {
         try {
-            const doc = await this.collection.findOne({ _id: 'creds' });
+            const doc = await this.collection.findOne(
+                { _id: 'creds' },
+                { maxTimeMS: 2000 } // Timeout for faster failure
+            );
             if (doc && doc.data) {
                 return JSON.parse(doc.data, BufferJSON.reviver);
             }
@@ -49,7 +65,10 @@ class MongoAuthState {
             await this.collection.replaceOne(
                 { _id: 'creds' },
                 { _id: 'creds', data: serialized },
-                { upsert: true }
+                { 
+                    upsert: true,
+                    writeConcern: { w: 1, j: false } // Faster writes
+                }
             );
             console.log('💾 Credentials saved to MongoDB');
         } catch (error) {

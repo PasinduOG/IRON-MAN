@@ -3,7 +3,7 @@ const { MongoClient } = require('mongodb');
 // Load environment variables
 require('dotenv').config();
 
-// MongoDB Configuration
+// MongoDB Configuration - Optimized for performance
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://pasinduogdev:PasinduDev678@cluster0.4ns3c.mongodb.net/iron-man-bot';
 const DB_NAME = 'iron-man-bot';
 const COLLECTION_NAME = 'memory';
@@ -12,25 +12,37 @@ let client;
 let db;
 let memoryCollection;
 
-// Connect to MongoDB
+// Connection pool for better performance
+const connectionOptions = {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    serverSelectionTimeoutMS: 3000, // Reduced for faster failure detection
+    connectTimeoutMS: 5000,         // Reduced for faster connections
+    maxPoolSize: 10,                // Connection pool for performance
+    minPoolSize: 2,                 // Minimum connections
+    maxIdleTimeMS: 30000,           // Close connections after 30 seconds idle
+    bufferMaxEntries: 0,            // Disable mongoose buffering for faster errors
+    retryWrites: true,              // Enable retry for better reliability
+    writeConcern: { w: 1, j: false } // Faster writes with journal disabled
+};
+
+// Connect to MongoDB with optimized settings
 async function connectToMongoDB() {
     try {
         if (!client) {
             console.log('🔄 Connecting to MongoDB for memory management...');
-            client = new MongoClient(MONGODB_URI, {
-                useNewUrlParser: true,
-                useUnifiedTopology: true,
-                serverSelectionTimeoutMS: 5000,
-                connectTimeoutMS: 10000,
-            });
+            client = new MongoClient(MONGODB_URI, connectionOptions);
             
             await client.connect();
             db = client.db(DB_NAME);
             memoryCollection = db.collection(COLLECTION_NAME);
             
-            // Create index for better performance
-            await memoryCollection.createIndex({ number: 1 });
-            await memoryCollection.createIndex({ updatedAt: 1 });
+            // Create optimized indexes for better performance
+            await Promise.all([
+                memoryCollection.createIndex({ number: 1 }, { background: true }),
+                memoryCollection.createIndex({ updatedAt: 1 }, { background: true, expireAfterSeconds: 2592000 }), // 30 days TTL
+                memoryCollection.createIndex({ "memory.timestamp": 1 }, { background: true })
+            ]);
             
             console.log('✅ MongoDB connected successfully for memory management');
         }
@@ -50,14 +62,22 @@ async function ensureConnection() {
 }
 
 /**
- * Retrieve conversation memory array for a given WhatsApp number
+ * Retrieve conversation memory array for a given WhatsApp number - Optimized
  * @param {string} number - WhatsApp number
  * @returns {Array} - Array of message objects with role and message
  */
 async function getMemory(number) {
     try {
         const collection = await ensureConnection();
-        const userMemory = await collection.findOne({ number });
+        
+        // Optimized query with projection to reduce data transfer
+        const userMemory = await collection.findOne(
+            { number }, 
+            { 
+                projection: { memory: 1 },
+                maxTimeMS: 2000 // 2 second timeout for reads
+            }
+        );
         
         if (userMemory && userMemory.memory) {
             console.log(`📋 Retrieved ${userMemory.memory.length} messages from memory for ${number}`);
@@ -103,7 +123,7 @@ async function addMemory(number, role, message) {
 }
 
 /**
- * Push both user and AI message to memory
+ * Push both user and AI message to memory - Optimized with bulk operations
  * @param {string} number - WhatsApp number
  * @param {string} userMessage - User's message
  * @param {string} aiReply - AI's reply
@@ -111,29 +131,36 @@ async function addMemory(number, role, message) {
 async function updateMemory(number, userMessage, aiReply) {
     try {
         const collection = await ensureConnection();
+        const timestamp = new Date();
+        
         const userMessageObj = {
             role: 'user',
             message: userMessage,
-            timestamp: new Date()
+            timestamp
         };
         
         const aiMessageObj = {
             role: 'ai',
             message: aiReply,
-            timestamp: new Date()
+            timestamp
         };
         
+        // Optimized bulk operation with write concern for speed
         await collection.updateOne(
             { number },
             {
                 $push: { 
                     memory: { 
-                        $each: [userMessageObj, aiMessageObj] 
+                        $each: [userMessageObj, aiMessageObj],
+                        $slice: -20 // Keep only last 20 messages for performance
                     } 
                 },
-                $set: { updatedAt: new Date() }
+                $set: { updatedAt: timestamp }
             },
-            { upsert: true }
+            { 
+                upsert: true,
+                writeConcern: { w: 1, j: false } // Faster writes
+            }
         );
         
         console.log(`💾 Updated memory with user and AI messages for ${number}`);
@@ -143,31 +170,29 @@ async function updateMemory(number, userMessage, aiReply) {
 }
 
 /**
- * Keep only the latest `limit` messages in memory
+ * Keep only the latest `limit` messages in memory - Optimized
  * @param {string} number - WhatsApp number
  * @param {number} limit - Maximum number of messages to keep
  */
-async function clearOldMemory(number, limit = 10) {
+async function clearOldMemory(number, limit = 20) {
     try {
         const collection = await ensureConnection();
-        const userMemory = await collection.findOne({ number });
         
-        if (userMemory && userMemory.memory && userMemory.memory.length > limit) {
-            // Keep only the latest messages
-            const latestMessages = userMemory.memory.slice(-limit);
-            
-            await collection.updateOne(
-                { number },
+        // Use aggregation for better performance
+        await collection.updateOne(
+            { number },
+            [
                 {
                     $set: {
-                        memory: latestMessages,
+                        memory: { $slice: ["$memory", -limit] },
                         updatedAt: new Date()
                     }
                 }
-            );
-            
-            console.log(`🧹 Cleared old memory for ${number}, kept latest ${limit} messages`);
-        }
+            ],
+            { writeConcern: { w: 1, j: false } }
+        );
+        
+        console.log(`🧹 Cleared old memory for ${number}, kept latest ${limit} messages`);
     } catch (error) {
         console.error(`❌ Error clearing old memory for ${number}:`, error);
     }
