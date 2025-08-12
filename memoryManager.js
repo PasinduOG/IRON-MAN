@@ -14,14 +14,11 @@ let memoryCollection;
 
 // Connection pool for better performance
 const connectionOptions = {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
     serverSelectionTimeoutMS: 3000, // Reduced for faster failure detection
     connectTimeoutMS: 5000,         // Reduced for faster connections
     maxPoolSize: 10,                // Connection pool for performance
     minPoolSize: 2,                 // Minimum connections
     maxIdleTimeMS: 30000,           // Close connections after 30 seconds idle
-    bufferMaxEntries: 0,            // Disable mongoose buffering for faster errors
     retryWrites: true,              // Enable retry for better reliability
     writeConcern: { w: 1, j: false } // Faster writes with journal disabled
 };
