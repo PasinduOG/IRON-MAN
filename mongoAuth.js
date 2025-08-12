@@ -26,9 +26,7 @@ class MongoAuthState {
             const db = this.client.db(this.dbName);
             this.collection = db.collection(this.collectionName);
             
-            // Create index for better performance
-            await this.collection.createIndex({ _id: 1 }, { background: true });
-            
+            // Note: _id index is created automatically, no need to create it explicitly
             console.log('✅ Connected to MongoDB for auth storage');
         } catch (error) {
             console.error('❌ MongoDB connection failed:', error);
