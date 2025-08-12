@@ -316,8 +316,8 @@ async function handleChatCommand(client, msg, args) {
     const session = getUserSession(userId);
 
     try {
-        // Send thinking message
-        await client.sendMessage(userId, { text: "🤖 Thinking..." });
+        // Show typing indicator instead of thinking message
+        await client.sendPresenceUpdate('composing', userId);
 
         // Retrieve user's conversation memory
         const memory = await getMemory(userNumber);
@@ -341,6 +341,9 @@ async function handleChatCommand(client, msg, args) {
 
         const aiReply = res.data.candidates?.[0]?.content?.parts?.[0]?.text || "🤖 No response.";
 
+        // Stop typing indicator before sending response
+        await client.sendPresenceUpdate('available', userId);
+
         // Send response to user
         await client.sendMessage(userId, {
             text: `🧠 *Response:*\n\n${aiReply}`
@@ -356,6 +359,9 @@ async function handleChatCommand(client, msg, args) {
 
     } catch (err) {
         console.error(`❌ Gemini error for user ${userId}:`, err.message);
+
+        // Stop typing indicator on error
+        await client.sendPresenceUpdate('available', userId);
 
         let errorMessage = "❌ Error with Gemini AI.";
         if (err.code === 'ECONNABORTED') {
