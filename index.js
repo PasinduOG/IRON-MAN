@@ -211,11 +211,16 @@ const userSessions = new Map(); // Store user session data
 const userRateLimits = new Map(); // Store user rate limiting data
 const activeProcesses = new Map(); // Track active processing per user
 const userRequestQueues = new Map(); // Queue multiple requests per user
+const memoryCache = new Map(); // Cache user memory for faster access
 
 // Enhanced AI processing configuration
 const MAX_CONCURRENT_AI_REQUESTS = 100; // Maximum concurrent AI requests globally
 const MAX_USER_QUEUE_SIZE = 5; // Maximum queued requests per user
 let globalActiveAIRequests = 0; // Track global AI request count
+
+// Performance optimization configuration
+const MEMORY_CACHE_TTL = 30000; // Cache memory for 30 seconds
+const TYPING_INDICATOR_DELAY = 100; // Minimal delay for typing indicators
 
 // Rate limiting configuration
 const RATE_LIMIT_WINDOW = 60000; // 1 minute
@@ -285,6 +290,30 @@ function getUserQueue(userId) {
     return userRequestQueues.get(userId);
 }
 
+// Fast memory retrieval with caching
+async function getMemoryFast(userNumber) {
+    const cacheKey = `memory_${userNumber}`;
+    const cached = memoryCache.get(cacheKey);
+    
+    // Return cached memory if still valid
+    if (cached && (Date.now() - cached.timestamp) < MEMORY_CACHE_TTL) {
+        return cached.data;
+    }
+    
+    // Fetch from database and cache
+    try {
+        const memory = await getMemory(userNumber);
+        memoryCache.set(cacheKey, {
+            data: memory,
+            timestamp: Date.now()
+        });
+        return memory;
+    } catch (error) {
+        console.error(`Memory fetch error for ${userNumber}:`, error.message);
+        return []; // Return empty array on error
+    }
+}
+
 // Process next request in user's queue
 async function processUserQueue(userId, client) {
     const queue = getUserQueue(userId);
@@ -318,12 +347,25 @@ function cleanupInactiveSessions() {
             userRateLimits.delete(`${userId}_sticker`);
             activeProcesses.delete(userId);
             userRequestQueues.delete(userId); // Clean up queue
+            memoryCache.delete(`memory_${userId.split('@')[0]}`); // Clean up memory cache
+        }
+    }
+}
+
+// Clean up expired memory cache entries
+function cleanupMemoryCache() {
+    const now = Date.now();
+    for (const [key, value] of memoryCache.entries()) {
+        if (now - value.timestamp > MEMORY_CACHE_TTL) {
+            memoryCache.delete(key);
         }
     }
 }
 
 // Run cleanup every 10 minutes
 setInterval(cleanupInactiveSessions, 10 * 60 * 1000);
+// Run memory cache cleanup every 2 minutes
+setInterval(cleanupMemoryCache, 2 * 60 * 1000);
 
 // Enhanced AI Chat Handler with concurrent processing support
 async function handleChatCommand(client, msg, args) {
@@ -406,11 +448,14 @@ async function handleAIRequestInternal(client, msg, args, userId, userNumber, pr
     const session = getUserSession(userId);
 
     try {
-        // Show typing indicator
-        await client.sendPresenceUpdate('composing', chatId);
+        // Show typing indicator (non-blocking)
+        client.sendPresenceUpdate('composing', chatId).catch(() => {}); // Don't wait for this
 
-        // Retrieve user's conversation memory
-        const memory = await getMemory(userNumber);
+        // Parallel operations for better performance
+        const [memory] = await Promise.all([
+            getMemoryFast(userNumber), // Use cached memory for speed
+            // Start typing indicator in parallel
+        ]);
 
         // Build conversation context with memory
         const conversationContext = buildConversationContext(memory, prompt);
@@ -426,13 +471,13 @@ async function handleAIRequestInternal(client, msg, args, userId, userNumber, pr
                     }]
                 }]
             },
-            { timeout: 30000 } // 30 second timeout
+            { timeout: 15000 } // Reduced timeout to 15 seconds for faster response
         );
 
         const aiReply = res.data.candidates?.[0]?.content?.parts?.[0]?.text || "🤖 No response.";
 
-        // Stop typing indicator before sending response
-        await client.sendPresenceUpdate('available', chatId);
+        // Stop typing indicator (non-blocking)
+        client.sendPresenceUpdate('available', chatId).catch(() => {});
 
         // Send response with group awareness
         const responseText = isGroup 
@@ -444,28 +489,40 @@ async function handleAIRequestInternal(client, msg, args, userId, userNumber, pr
             mentions: isGroup ? [userId] : undefined
         });
 
-        // Update memory with both user message and AI reply
-        await updateMemory(userNumber, prompt, aiReply);
+        // Update memory asynchronously (don't wait for it) and invalidate cache
+        Promise.all([
+            updateMemory(userNumber, prompt, aiReply),
+            clearOldMemory(userNumber, 10)
+        ]).then(() => {
+            // Invalidate memory cache after update
+            memoryCache.delete(`memory_${userNumber}`);
+        }).catch(err => console.error('Memory update error:', err));
 
-        // Clear old memory to maintain only latest 10 messages
-        await clearOldMemory(userNumber, 10);
-
-        console.log(`✅ AI response sent to user ${session.id} (Message #${session.messageCount}) with memory updated`);
+        console.log(`✅ AI response sent to user ${session.id} (Message #${session.messageCount}) - memory updating in background`);
 
     } catch (err) {
         console.error(`❌ Gemini error for user ${userId}:`, err.message);
 
-        // Stop typing indicator on error
-        await client.sendPresenceUpdate('available', userId);
+        // Stop typing indicator on error (non-blocking)
+        client.sendPresenceUpdate('available', chatId).catch(() => {});
 
         let errorMessage = "❌ Error with Gemini AI.";
-        if (err.code === 'ECONNABORTED') {
-            errorMessage = "⏰ AI request timed out. Please try again with a shorter prompt.";
+        if (err.code === 'ECONNABORTED' || err.code === 'ETIMEDOUT') {
+            errorMessage = "⏰ AI request timed out. Please try a shorter prompt.";
         } else if (err.response?.status === 429) {
-            errorMessage = "🚫 AI service is busy. Please try again in a few moments.";
+            errorMessage = "🚫 AI service is busy. Try again in a moment.";
+        } else if (err.response?.status >= 500) {
+            errorMessage = "🔧 AI service temporarily unavailable. Please retry.";
         }
 
-        client.sendMessage(userId, { text: errorMessage });
+        const errorText = isGroup 
+            ? `❌ @${userNumber} ${errorMessage}`
+            : errorMessage;
+
+        client.sendMessage(chatId, { 
+            text: errorText,
+            mentions: isGroup ? [userId] : undefined
+        }).catch(() => {}); // Don't wait for error message
     } finally {
         // Decrement global counter
         globalActiveAIRequests--;
@@ -802,9 +859,10 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                 const developerInfo = await generateDeveloperInfo(githubProfile);
 
                 // Send developer info with image preview
-                await sock.sendMessage(userId, {
+                await sock.sendMessage(chatId, {
                     image: developerImageBuffer,
-                    caption: developerInfo
+                    caption: developerInfo,
+                    mentions: isGroup ? [userId] : undefined
                 });
 
                 console.log(`✅ Developer info sent successfully to ${senderName} with image preview (Live GitHub data)`);
@@ -816,8 +874,9 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                     const githubProfile = await fetchGithubProfile();
                     const developerInfoText = await generateDeveloperInfoFallback(githubProfile);
 
-                    await sock.sendMessage(userId, {
-                        text: developerInfoText
+                    await sock.sendMessage(chatId, {
+                        text: developerInfoText,
+                        mentions: isGroup ? [userId] : undefined
                     });
 
                     console.log(`✅ Developer info sent successfully to ${senderName} (text-only fallback with live GitHub data)`);
@@ -834,8 +893,9 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                         `⚡ "I hate frontends" (Backend developer at heart!)\n\n` +
                         `*Built with ❤️ by Pasindu Madhuwantha*`;
 
-                    await sock.sendMessage(userId, {
-                        text: basicInfo
+                    await sock.sendMessage(chatId, {
+                        text: basicInfo,
+                        mentions: isGroup ? [userId] : undefined
                     });
                 }
             }
@@ -846,12 +906,24 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
             // Check rate limiting for sticker creation
             const rateCheck = checkRateLimit(userId, 'sticker');
             if (!rateCheck.allowed) {
-                return sock.sendMessage(userId, { text: `⏰ ${rateCheck.reason}` });
+                const rateLimitMsg = isGroup 
+                    ? `⏰ @${userId.split('@')[0]} ${rateCheck.reason}`
+                    : `⏰ ${rateCheck.reason}`;
+                return sock.sendMessage(chatId, { 
+                    text: rateLimitMsg,
+                    mentions: isGroup ? [userId] : undefined
+                });
             }
 
             // Check if user already has an active sticker process
             if (activeProcesses.has(`${userId}_sticker`)) {
-                return sock.sendMessage(userId, { text: "🎬 Please wait, I'm still processing your previous sticker request..." });
+                const processingMsg = isGroup 
+                    ? `🎬 @${userId.split('@')[0]} Please wait, I'm still processing your previous sticker request...`
+                    : "🎬 Please wait, I'm still processing your previous sticker request...";
+                return sock.sendMessage(chatId, { 
+                    text: processingMsg,
+                    mentions: isGroup ? [userId] : undefined
+                });
             }
 
             // Mark as active
@@ -896,7 +968,7 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                             .webp({ quality: 80 })
                             .toBuffer();
 
-                        await sock.sendMessage(userId, {
+                        await sock.sendMessage(chatId, {
                             sticker: webpBuffer
                         }, quoted ? { quoted: msg } : {});
 
@@ -906,8 +978,13 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                         // Process as animated sticker using existing animated sticker functionality
                         console.log(`🎬 Processing animated sticker for user ${senderName}...`);
 
-                        await sock.sendMessage(userId, {
-                            text: `🎬 Sir, converting your video/GIF to animated sticker... This may take a moment.\n⏱️ Maximum duration: ${MAX_STICKER_DURATION} seconds`
+                        const processingMsg = isGroup 
+                            ? `🎬 @${userId.split('@')[0]} Sir, converting your video/GIF to animated sticker... This may take a moment.\n⏱️ Maximum duration: ${MAX_STICKER_DURATION} seconds`
+                            : `🎬 Sir, converting your video/GIF to animated sticker... This may take a moment.\n⏱️ Maximum duration: ${MAX_STICKER_DURATION} seconds`;
+
+                        await sock.sendMessage(chatId, {
+                            text: processingMsg,
+                            mentions: isGroup ? [userId] : undefined
                         });
 
                         // Download the video/GIF
@@ -941,7 +1018,7 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                             const stickerBuffer = fs.readFileSync(outputPath);
 
                             // Send as sticker
-                            await sock.sendMessage(userId, {
+                            await sock.sendMessage(chatId, {
                                 sticker: stickerBuffer
                             }, quoted ? { quoted: msg } : {});
 
@@ -949,8 +1026,12 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
 
                         } catch (conversionError) {
                             console.error(`❌ Error converting video to animated sticker for ${senderName}:`, conversionError);
-                            await sock.sendMessage(userId, {
-                                text: '❌ Sir, failed to convert video to animated sticker. The video might be too large or in an unsupported format.'
+                            const errorMsg = isGroup 
+                                ? `❌ @${userId.split('@')[0]} Sir, failed to convert video to animated sticker. The video might be too large or in an unsupported format.`
+                                : '❌ Sir, failed to convert video to animated sticker. The video might be too large or in an unsupported format.';
+                            await sock.sendMessage(chatId, {
+                                text: errorMsg,
+                                mentions: isGroup ? [userId] : undefined
                             });
                         } finally {
                             // Clean up temporary files
@@ -960,14 +1041,22 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                     }
 
                 } else {
-                    await sock.sendMessage(userId, {
-                        text: '❗ Sir. Please send an image or video/GIF with !sticker caption or reply to media with !sticker\n\n📝 Usage:\n• Send image with caption: !sticker (creates static sticker)\n• Send video/GIF with caption: !sticker (creates animated sticker)\n• Reply to image with: !sticker\n• Reply to video/GIF with: !sticker'
+                    const usageMsg = isGroup 
+                        ? `❗ @${userId.split('@')[0]} Sir. Please send an image or video/GIF with !sticker caption or reply to media with !sticker\n\n📝 Usage:\n• Send image with caption: !sticker (creates static sticker)\n• Send video/GIF with caption: !sticker (creates animated sticker)\n• Reply to image with: !sticker\n• Reply to video/GIF with: !sticker`
+                        : '❗ Sir. Please send an image or video/GIF with !sticker caption or reply to media with !sticker\n\n📝 Usage:\n• Send image with caption: !sticker (creates static sticker)\n• Send video/GIF with caption: !sticker (creates animated sticker)\n• Reply to image with: !sticker\n• Reply to video/GIF with: !sticker';
+                    await sock.sendMessage(chatId, {
+                        text: usageMsg,
+                        mentions: isGroup ? [userId] : undefined
                     });
                 }
             } catch (error) {
                 console.error(`❌ Error creating sticker for ${senderName}:`, error);
-                await sock.sendMessage(userId, {
-                    text: '❌ Failed to create sticker. Please try again with a valid image or video/GIF.'
+                const errorMsg = isGroup 
+                    ? `❌ @${userId.split('@')[0]} Failed to create sticker. Please try again with a valid image or video/GIF.`
+                    : '❌ Failed to create sticker. Please try again with a valid image or video/GIF.';
+                await sock.sendMessage(chatId, {
+                    text: errorMsg,
+                    mentions: isGroup ? [userId] : undefined
                 });
             } finally {
                 // Remove from active processes
@@ -1007,7 +1096,7 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                 console.log(`📏 Video file size: ${(ironmanVideoBuffer.length / 1024).toFixed(2)} KB`);
 
                 const invalidCommandMessage = `❌ *Invalid Command: "${messageText}"*\n\n` +
-                    `🤖 Sir, that command is not recognized in my database.\n\n` +
+                    `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}🤖 Sir, that command is not recognized in my database.\n\n` +
                     `📝 Type *!commands* to show all commands\n` +
                     `⚙️ *IRON-MAN Bot v${BOT_VERSION}*\n` +
                     `👤 Your session: ${userSession.messageCount} messages`;
@@ -1015,34 +1104,40 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                 // Try multiple methods to send the video as GIF-like preview
                 try {
                     console.log(`🎬 Attempting to send video as GIF playback to ${senderName}...`);
-                    await sock.sendMessage(userId, {
+                    const mentions = isGroup ? [actualSender] : [];
+                    await sock.sendMessage(chatId, {
                         video: ironmanVideoBuffer,
                         gifPlayback: true,
                         caption: invalidCommandMessage,
                         mimetype: 'video/mp4',
-                        fileName: 'ironman.mp4'
+                        fileName: 'ironman.mp4',
+                        mentions
                     });
                     console.log(`✅ Invalid command video sent successfully as GIF playback to ${senderName}`);
                 } catch (videoGifError) {
                     console.log(`⚠️ Video as GIF failed for ${senderName}:`, videoGifError.message);
                     try {
                         console.log(`🎥 Attempting to send as regular video to ${senderName}...`);
-                        await sock.sendMessage(userId, {
+                        const mentions = isGroup ? [actualSender] : [];
+                        await sock.sendMessage(chatId, {
                             video: ironmanVideoBuffer,
                             caption: invalidCommandMessage,
                             mimetype: 'video/mp4',
-                            fileName: 'ironman.mp4'
+                            fileName: 'ironman.mp4',
+                            mentions
                         });
                         console.log(`✅ Invalid command video sent successfully as regular video to ${senderName}`);
                     } catch (regularVideoError) {
                         console.log(`⚠️ Regular video failed for ${senderName}:`, regularVideoError.message);
                         // Try sending as document
                         console.log(`📄 Attempting to send video as document to ${senderName}...`);
-                        await sock.sendMessage(userId, {
+                        const mentions = isGroup ? [actualSender] : [];
+                        await sock.sendMessage(chatId, {
                             document: ironmanVideoBuffer,
                             fileName: 'ironman.mp4',
                             mimetype: 'video/mp4',
-                            caption: invalidCommandMessage
+                            caption: invalidCommandMessage,
+                            mentions
                         });
                         console.log(`✅ Invalid command video sent successfully as document to ${senderName}`);
                     }
@@ -1054,16 +1149,19 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                 try {
                     console.log(`🖼️ Final fallback: sending static image to ${senderName}...`);
                     const ironmanImageBuffer = fs.readFileSync('./src/ironman.jpg');
-                    await sock.sendMessage(userId, {
+                    const mentions = isGroup ? [actualSender] : [];
+                    await sock.sendMessage(chatId, {
                         image: ironmanImageBuffer,
                         caption: invalidCommandMessage,
-                        mimetype: 'image/jpeg'
+                        mimetype: 'image/jpeg',
+                        mentions
                     });
                     console.log(`✅ Invalid command response sent as static image fallback to ${senderName}`);
                 } catch (finalError) {
                     console.error(`🚨 All fallback methods failed for ${senderName}:`, finalError.message);
                     // Ultimate fallback - text only
-                    await sock.sendMessage(userId, { text: invalidCommandMessage });
+                    const mentions = isGroup ? [actualSender] : [];
+                    await sock.sendMessage(chatId, { text: invalidCommandMessage, mentions });
                     console.log(`✅ Invalid command response sent as text-only (ultimate fallback) to ${senderName}`);
                 }
             }
@@ -1090,16 +1188,22 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
             const url = messageText.substring(6).trim(); // Remove '!conv ' and trim whitespace
             
             if (!url) {
-                await sock.sendMessage(userId, { 
-                    text: "❌ Usage: !conv <youtube_url>\n\n📌 Example: !conv https://www.youtube.com/watch?v=dQw4w9WgXcQ\n💡 The MP3 will be automatically downloaded and sent as a document!" 
+                const mentionText = isGroup ? `@${actualSender.split('@')[0]} ` : '';
+                const mentions = isGroup ? [actualSender] : [];
+                await sock.sendMessage(chatId, { 
+                    text: `${mentionText}❌ Usage: !conv <youtube_url>\n\n📌 Example: !conv https://www.youtube.com/watch?v=dQw4w9WgXcQ\n💡 The MP3 will be automatically downloaded and sent as a document!`,
+                    mentions
                 });
                 return;
             }
 
             // Basic URL validation
             if (!url.includes('youtube.com/watch') && !url.includes('youtu.be/')) {
-                await sock.sendMessage(userId, { 
-                    text: "❌ Please provide a valid YouTube URL\n\n📌 Supported formats:\n• https://www.youtube.com/watch?v=...\n• https://youtu.be/..." 
+                const mentionText = isGroup ? `@${actualSender.split('@')[0]} ` : '';
+                const mentions = isGroup ? [actualSender] : [];
+                await sock.sendMessage(chatId, { 
+                    text: `${mentionText}❌ Please provide a valid YouTube URL\n\n📌 Supported formats:\n• https://www.youtube.com/watch?v=...\n• https://youtu.be/...`,
+                    mentions
                 });
                 return;
             }
@@ -1107,12 +1211,16 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
             // Check rate limiting
             const rateCheck = checkRateLimit(userId, 'general');
             if (!rateCheck.allowed) {
-                return sock.sendMessage(userId, { text: `⏰ ${rateCheck.reason}` });
+                const mentionText = isGroup ? `@${actualSender.split('@')[0]} ` : '';
+                const mentions = isGroup ? [actualSender] : [];
+                return sock.sendMessage(chatId, { text: `${mentionText}⏰ ${rateCheck.reason}`, mentions });
             }
 
             // Check if user already has an active conversion process
             if (activeProcesses.has(`${userId}_conv`)) {
-                return sock.sendMessage(userId, { text: "🎵 Please wait, I'm still processing your previous conversion request..." });
+                const mentionText = isGroup ? `@${actualSender.split('@')[0]} ` : '';
+                const mentions = isGroup ? [actualSender] : [];
+                return sock.sendMessage(chatId, { text: `${mentionText}🎵 Please wait, I'm still processing your previous conversion request...`, mentions });
             }
 
             // Mark as active
@@ -1122,8 +1230,11 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                 console.log(`🎵 YouTube conversion requested by ${senderName}: ${url}`);
                 
                 // Send processing message
-                await sock.sendMessage(userId, { 
-                    text: `🎵 Converting YouTube video to MP3...\n⏳ This may take a few moments, please wait.\n\n🔗 URL: ${url}` 
+                const mentionText = isGroup ? `@${actualSender.split('@')[0]} ` : '';
+                const mentions = isGroup ? [actualSender] : [];
+                await sock.sendMessage(chatId, { 
+                    text: `${mentionText}🎵 Converting YouTube video to MP3...\n⏳ This may take a few moments, please wait.\n\n🔗 URL: ${url}`,
+                    mentions
                 });
 
                 // Convert YouTube to MP3
@@ -1137,8 +1248,9 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                     
                     try {
                         // Send downloading message
-                        await sock.sendMessage(userId, {
-                            text: `📥 *Downloading MP3 file...*\n\n🎵 *${result.title || 'Unknown'}*\n⏳ Please wait while I download and send the file.`
+                        await sock.sendMessage(chatId, {
+                            text: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}📥 *Downloading MP3 file...*\n\n🎵 *${result.title || 'Unknown'}*\n⏳ Please wait while I download and send the file.`,
+                            mentions: isGroup ? [actualSender] : []
                         });
 
                         console.log(`📥 Downloading MP3 from: ${downloadLink}`);
@@ -1163,14 +1275,15 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                         filename = `${filename}.mp3`;
 
                         // Send the MP3 as a document
-                        await sock.sendMessage(userId, {
+                        await sock.sendMessage(chatId, {
                             document: mp3Buffer,
                             fileName: filename,
                             mimetype: 'audio/mpeg',
-                            caption: `🎵 *${result.title || 'Audio File'}*\n\n` +
+                            caption: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}🎵 *${result.title || 'Audio File'}*\n\n` +
                                    `⏱️ *Duration:* ${result.duration ? `${Math.floor(result.duration / 60)}:${(result.duration % 60).toString().padStart(2, '0')}` : 'Unknown'}\n` +
                                    `📁 *File Size:* ${(mp3Buffer.length / 1024 / 1024).toFixed(2)} MB\n` +
-                                   `⚡ *Converted by IRON-MAN Bot v${BOT_VERSION}*`
+                                   `⚡ *Converted by IRON-MAN Bot v${BOT_VERSION}*`,
+                            mentions: isGroup ? [actualSender] : []
                         });
 
                         console.log(`✅ MP3 document sent successfully to ${senderName}: ${result.title}`);
@@ -1179,13 +1292,14 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                         console.error(`❌ Download error for ${senderName}:`, downloadError.message);
                         
                         // Fallback to sending download link if direct download fails
-                        await sock.sendMessage(userId, {
-                            text: `⚠️ *Auto-download failed, but conversion was successful!*\n\n` +
+                        await sock.sendMessage(chatId, {
+                            text: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}⚠️ *Auto-download failed, but conversion was successful!*\n\n` +
                                   `🎵 *Title:* ${result.title || 'Unknown'}\n` +
                                   `⏱️ *Duration:* ${result.duration ? `${Math.floor(result.duration / 60)}:${(result.duration % 60).toString().padStart(2, '0')}` : 'Unknown'}\n` +
                                   `📥 *Download Link:* ${downloadLink}\n\n` +
                                   `💡 Click the link above to download your MP3 file manually!\n` +
-                                  `⚡ *Converted by IRON-MAN Bot*`
+                                  `⚡ *Converted by IRON-MAN Bot*`,
+                            mentions: isGroup ? [actualSender] : []
                         });
                     }
                 } else {
@@ -1201,8 +1315,9 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                         }
                     }
                     
-                    await sock.sendMessage(userId, { 
-                        text: `❌ Conversion failed. ${errorDetail}\n\n💡 Try with a different video or check if the URL is correct.` 
+                    await sock.sendMessage(chatId, { 
+                        text: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}❌ Conversion failed. ${errorDetail}\n\n💡 Try with a different video or check if the URL is correct.`,
+                        mentions: isGroup ? [actualSender] : []
                     });
                     console.log(`❌ Conversion failed for ${senderName}. Result:`, result);
                 }
@@ -1225,7 +1340,10 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                     errorMessage = "🔧 Conversion service is experiencing technical difficulties. Please try again later.";
                 }
                 
-                await sock.sendMessage(userId, { text: errorMessage });
+                await sock.sendMessage(chatId, { 
+                    text: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}${errorMessage}`,
+                    mentions: isGroup ? [actualSender] : []
+                });
             } finally {
                 // Remove from active processes
                 activeProcesses.delete(`${userId}_conv`);
@@ -1234,35 +1352,38 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
 
         // Common command redirects - Handle commands users might expect
         if (messageText === '!ping' || messageText === '!test' || messageText === '!alive') {
-            await sock.sendMessage(userId, {
-                text: `🏓 *Pong!* Bot is alive and running!\n\n` +
+            await sock.sendMessage(chatId, {
+                text: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}🏓 *Pong!* Bot is alive and running!\n\n` +
                     `⚡ Response time: ${Date.now() - userSession.lastActivity}ms\n` +
                     `🤖 Status: Online\n` +
                     `📊 Type *!stats* for detailed statistics\n` +
-                    `📝 Type *!commands* for all available commands`
+                    `📝 Type *!commands* for all available commands`,
+                mentions: isGroup ? [actualSender] : []
             });
         }
 
         if (messageText === '!info' || messageText === '!about' || messageText === '!version') {
-            await sock.sendMessage(userId, {
-                text: `🤖 *IRON-MAN Bot Information*\n\n` +
+            await sock.sendMessage(chatId, {
+                text: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}🤖 *IRON-MAN Bot Information*\n\n` +
                     `🔥 Version: 1.5.0 - AI Memory & Media Edition\n` +
                     `👨‍💻 Developer: Pasindu Madhuwantha (PasinduOG)\n` +
                     `⚙️ Built with: Node.js, Baileys, MongoDB\n` +
                     `🌟 Features: AI Chat with Memory, Sticker Creation, YouTube to MP3, Session Persistence\n\n` +
                     `📝 Type *!help* for detailed help\n` +
-                    `👨‍💻 Type *!aboutdev* for developer info with GitHub data`
+                    `👨‍💻 Type *!aboutdev* for developer info with GitHub data`,
+                mentions: isGroup ? [actualSender] : []
             });
         }
 
         if (messageText === '!menu' || messageText === '!start') {
-            await sock.sendMessage(userId, {
-                text: `🤖 *Welcome to IRON-MAN Bot!*\n\n` +
+            await sock.sendMessage(chatId, {
+                text: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}🤖 *Welcome to IRON-MAN Bot!*\n\n` +
                     `Hi ${senderName}! I'm your AI-powered WhatsApp assistant.\n\n` +
                     `📋 Type *!commands* to see all available commands\n` +
                     `❓ Type *!help* for detailed help and instructions\n` +
                     `🧠 Try *!chat <your question>* for AI-powered responses\n\n` +
-                    `Let's get started! 🚀`
+                    `Let's get started! 🚀`,
+                mentions: isGroup ? [actualSender] : []
             });
         }
 
@@ -1278,14 +1399,15 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
             if (uptimeMinutes % 60 > 0) uptimeText += `${uptimeMinutes % 60}m `;
             uptimeText += `${uptimeSeconds % 60}s`;
 
-            await sock.sendMessage(userId, {
-                text: `🤖 *Bot Status Report*\n\n` +
+            await sock.sendMessage(chatId, {
+                text: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}🤖 *Bot Status Report*\n\n` +
                     `✅ Status: Online & Active\n` +
                     `⏰ Uptime: ${uptimeText}\n` +
                     `👥 Active users: ${userSessions.size}\n` +
                     `⚙️ Active processes: ${activeProcesses.size}\n` +
                     `🔄 Your session: ${userSession.messageCount} messages\n\n` +
-                    `📊 Type *!stats* for your personal statistics`
+                    `📊 Type *!stats* for your personal statistics`,
+                mentions: isGroup ? [actualSender] : []
             });
         }
 
@@ -1293,10 +1415,12 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
         if (messageText === '!memory') {
             const userNumber = userId.split('@')[0];
             const memoryStats = await getMemoryStats(userNumber);
+            const mentionText = isGroup ? `@${actualSender.split('@')[0]} ` : '';
 
             if (memoryStats.totalMessages > 0) {
-                await sock.sendMessage(userId, {
-                    text: `🧠 *Your AI Memory Statistics*
+                const mentions = isGroup ? [actualSender] : [];
+                await sock.sendMessage(chatId, {
+                    text: `${mentionText}🧠 *Your AI Memory Statistics*
 
 📊 *Memory Overview:*
 • Total messages: ${memoryStats.totalMessages}
@@ -1313,38 +1437,46 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
 • This helps me provide more personalized responses
 • Use *!forgetme* to clear your memory if needed
 
-🤖 Keep chatting to build better AI conversations!`
+🤖 Keep chatting to build better AI conversations!`,
+                    mentions
                 });
             } else {
-                await sock.sendMessage(userId, {
-                    text: `🧠 *Your AI Memory*
+                const mentions = isGroup ? [actualSender] : [];
+                await sock.sendMessage(chatId, {
+                    text: `${mentionText}🧠 *Your AI Memory*
 
 📊 No conversation history found yet.
 
 💡 Start chatting with *!chat <your message>* to build memory!
-The AI will remember your last 10 conversation exchanges for more personalized responses.`
+The AI will remember your last 10 conversation exchanges for more personalized responses.`,
+                    mentions
                 });
             }
         }
 
         if (messageText === '!forgetme' || messageText === '!clearcontext') {
             const userNumber = userId.split('@')[0];
+            const mentionText = isGroup ? `@${actualSender.split('@')[0]} ` : '';
 
             try {
                 await clearAllMemory(userNumber);
-                await sock.sendMessage(userId, {
-                    text: `🧠 *Memory Cleared Successfully*
+                const mentions = isGroup ? [actualSender] : [];
+                await sock.sendMessage(chatId, {
+                    text: `${mentionText}🧠 *Memory Cleared Successfully*
 
 ✅ All your conversation memory has been cleared.
 🔄 Future AI conversations will start fresh.
 💡 Use *!chat <message>* to start building new memory.
 
-Your session statistics and other data remain unchanged.`
+Your session statistics and other data remain unchanged.`,
+                    mentions
                 });
             } catch (error) {
                 console.error(`❌ Error clearing memory for ${userNumber}:`, error);
-                await sock.sendMessage(userId, {
-                    text: '❌ Failed to clear memory. Please try again later.'
+                const mentions = isGroup ? [actualSender] : [];
+                await sock.sendMessage(chatId, {
+                    text: `${mentionText}❌ Failed to clear memory. Please try again later.`,
+                    mentions
                 });
             }
         }
