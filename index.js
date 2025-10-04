@@ -686,10 +686,26 @@ async function startBot() {
         }
 
         if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect?.error)?.output?.statusCode !== DisconnectReason.loggedOut;
+            const statusCode = (lastDisconnect?.error)?.output?.statusCode;
+            const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
+            
             console.log('❌ Connection closed due to ', lastDisconnect?.error, ', reconnecting ', shouldReconnect);
-            if (shouldReconnect) {
-                // Restart the connection
+            
+            // Handle 401 Unauthorized - clear expired auth
+            if (statusCode === 401 || lastDisconnect?.error?.message === 'Connection Failure') {
+                console.log('🔄 Auth session expired (401) - clearing old credentials...');
+                mongoAuthState.clearExpiredAuth().then(() => {
+                    console.log('✅ Ready for fresh QR code scan');
+                    setTimeout(() => {
+                        console.log('🔄 Restarting with new authentication...');
+                        startBot();
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Error clearing auth:', err);
+                    setTimeout(() => startBot(), 3000);
+                });
+            } else if (shouldReconnect) {
+                // Normal reconnection for other errors
                 setTimeout(() => {
                     console.log('🔄 Reconnecting...');
                     startBot();

@@ -116,6 +116,18 @@ class MongoAuthState {
             console.error('Error clearing auth data from MongoDB:', error);
         }
     }
+
+    // Clear expired or invalid auth session
+    async clearExpiredAuth() {
+        try {
+            await this.collection.deleteMany({});
+            console.log('🔄 Cleared expired auth session - ready for new QR code');
+            return true;
+        } catch (error) {
+            console.error('Error clearing expired auth:', error);
+            return false;
+        }
+    }
 }
 
 async function useMongoDBAuthState(mongoUri) {
