@@ -182,6 +182,7 @@ async function useMongoDBAuthState(mongoUri) {
         state,
         saveCreds: saveState,
         clearState: () => mongoAuth.clearAll(),
+        clearExpiredAuth: () => mongoAuth.clearExpiredAuth(),
         disconnect: () => mongoAuth.disconnect()
     };
 }

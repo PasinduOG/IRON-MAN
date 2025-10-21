@@ -661,7 +661,7 @@ let currentQR = null;
 let isConnected = false;
 
 async function startBot() {
-    const { state, saveCreds } = await useMongoDBAuthState(MONGODB_URI);
+    const { state, saveCreds, clearExpiredAuth } = await useMongoDBAuthState(MONGODB_URI);
     const { version } = await fetchLatestBaileysVersion();
     const sock = makeWASocket({
         version,
@@ -694,7 +694,7 @@ async function startBot() {
             // Handle 401 Unauthorized - clear expired auth
             if (statusCode === 401 || lastDisconnect?.error?.message === 'Connection Failure') {
                 console.log('🔄 Auth session expired (401) - clearing old credentials...');
-                mongoAuthState.clearExpiredAuth().then(() => {
+                clearExpiredAuth().then(() => {
                     console.log('✅ Ready for fresh QR code scan');
                     setTimeout(() => {
                         console.log('🔄 Restarting with new authentication...');
@@ -743,12 +743,12 @@ async function startBot() {
         console.log(`📨 Message #${userSession.messageCount} from ${contextInfo} (${userId})`);
 
         // Extract message text from different message types
-        const messageText = msg.message?.conversation ||
+        const messageText = (msg.message?.conversation ||
             msg.message?.extendedTextMessage?.text ||
             msg.message?.imageMessage?.caption ||
             msg.message?.videoMessage?.caption ||
             msg.message?.gifMessage?.caption ||
-            '';
+            '').trim();
 
         // Check general rate limiting for commands (per individual user)
         if (messageText.startsWith('!')) {
@@ -1547,12 +1547,15 @@ The AI will remember your last 10 conversation exchanges for more personalized r
             }
         }
 
-        if (messageText === '!forgetme' || messageText === '!clearcontext') {
+        if (messageText.toLowerCase().trim() === '!forgetme' || messageText.toLowerCase().trim() === '!clearcontext') {
+            console.log(`🗑️ Memory clear command received from ${senderName} (${userId})`);
             const userNumber = userId.split('@')[0];
             const mentionText = isGroup ? `@${actualSender.split('@')[0]} ` : '';
 
             try {
+                console.log(`🔄 Attempting to clear memory for user: ${userNumber}`);
                 await clearAllMemory(userNumber);
+                console.log(`✅ Memory cleared successfully for user: ${userNumber}`);
                 const mentions = isGroup ? [actualSender] : [];
                 await sock.sendMessage(chatId, {
                     text: `${mentionText}🧠 *Memory Cleared Successfully*
