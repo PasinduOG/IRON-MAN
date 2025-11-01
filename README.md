@@ -26,7 +26,8 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
    - Send `hi` for a greeting
    - Send `!ping` to test bot responsiveness
    - Send `!chat what is AI?` for AI responses with memory
-   - Send `!conv https://www.youtube.com/watch?v=example` for YouTube to MP3 conversion
+   - Send `!conv https://www.youtube.com/watch?v=example` for YouTube media downloads (MP3/MP4)
+   - Send `!conv <url> 720p` for HD video download
    - Send `!help` for all commands with image
    - Send `!commands` for organized command list
    - Send an image with `!sticker` to create stickers
@@ -49,7 +50,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 
 - 🤖 **Smart Greetings** - Responds to hi, hello, hey with Jarvis welcome message
 - 🧠 **AI-Powered chat with Memory** - Google Gemini AI integration with conversation context and personalized responses
-- 🎵 **YouTube to MP3 Converter** - Convert YouTube videos to MP3 and auto-send as WhatsApp documents with metadata
+- 🎵 **YouTube Media Downloader** - Download YouTube videos as MP3 (audio) or MP4 (video) with multiple quality options (360p, 480p, 720p)
 - 🧠 **Conversation Memory** - Remembers last 10 message exchanges for context-aware responses
 - ❓ **Enhanced Help System** - Interactive help center with IRON-MAN themed responses and comprehensive command guide
 - 🔧 **Quick Commands** - Instant status checks with `!ping`, `!info`, `!menu`, `!uptime` for better user experience
@@ -70,7 +71,47 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 - 📱 **Responsive Interface** - Beautiful web interface with auto-refresh and mobile optimization
 - 🔐 **Clean Media Handling** - No automatic replies to uploaded media, allowing for cleaner conversation flow
 
-## 🚀 Commands
+## �️ Technologies & Dependencies
+
+### Core Technologies:
+- **Node.js v16+** - JavaScript runtime environment
+- **Baileys v6.7.18** - WhatsApp Web API library
+- **MongoDB v6.17.0** - NoSQL database for sessions and memory
+- **Express v4.18.2** - Web server for QR interface
+- **Sharp v0.32.6** - High-performance image processing
+- **FFmpeg v5.2.0** - Video/GIF processing for animated stickers
+
+### AI & API Integration:
+- **Google Gemini 2.0-flash** - Advanced AI for intelligent responses
+- **YTStream API** - YouTube media downloads (MP3/MP4)
+- **GitHub API** - Live developer profile integration
+- **RapidAPI Platform** - API marketplace integration
+
+### Key Libraries:
+- **axios v1.10.0** - HTTP client for API requests
+- **qrcode v1.5.3** - QR code generation for web interface
+- **dotenv v16.6.1** - Environment variable management
+- **fluent-ffmpeg v2.1.3** - FFmpeg Node.js wrapper
+- **qrcode-terminal v0.12.0** - Terminal QR display
+
+### Infrastructure:
+- **MongoDB Atlas** - Cloud database hosting
+- **Heroku** - Cloud platform deployment
+- **RapidAPI** - API service provider
+- **GitHub** - Version control and CI/CD
+
+### Features Powered By:
+| Feature | Technology | Purpose |
+|---------|-----------|----------|
+| AI Chat | Google Gemini API | Intelligent responses |
+| Memory System | MongoDB | Conversation storage |
+| Stickers | Sharp + FFmpeg | Image/video processing |
+| YouTube Downloads | YTStream API | Media downloads |
+| Session Persistence | MongoDB | Auth storage |
+| Web Interface | Express + QR | Bot connection |
+| Developer Info | GitHub API | Live profile data |
+
+## �🚀 Commands
 
 ### 💬 Natural Language Commands
 - **`hi`**, **`hello`**, **`hey`** - Get Jarvis welcome message
@@ -81,7 +122,7 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
 - **`!commands`** - Show all available commands list with organized categories
 - **`!sticker`** - Convert image/video/GIF to sticker (static or animated)
 - **`!chat [message]`** - Get AI-powered responses with conversation memory
-- **`!conv [youtube_url]`** - Convert YouTube videos to MP3 format for download
+- **`!conv [youtube_url] [quality]`** - Download YouTube videos as MP3 or MP4 (360p/480p/720p)
 - **`!aboutdev`** - Get detailed developer information with live GitHub data and avatar
 - **`!stats`** - Show your bot usage statistics (messages sent, session info, rate limits)
 
@@ -107,21 +148,27 @@ A powerful WhatsApp bot built with Baileys featuring Jarvis-style responses, adv
     - Personalized responses based on conversation history
     - Automatic memory cleanup to maintain optimal performance
 
-### 🎵 YouTube to MP3 Conversion Commands
-- **`!conv [youtube_url]`** - Convert YouTube videos to MP3 and auto-send as document
-  - Example: `!conv https://www.youtube.com/watch?v=dQw4w9WgXcQ`
-  - Example: `!conv https://youtu.be/dQw4w9WgXcQ`
+### 🎵 YouTube Media Download Commands
+- **`!conv [youtube_url] [quality]`** - Download YouTube videos as MP3 or MP4 with quality options
+  - **Audio Download (MP3)**:
+    - `!conv https://www.youtube.com/watch?v=dQw4w9WgXcQ` → MP3 (default)
+    - `!conv https://youtu.be/dQw4w9WgXcQ mp3` → MP3 audio
+  - **Video Download (MP4)**:
+    - `!conv https://www.youtube.com/watch?v=dQw4w9WgXcQ 360p` → 360p video
+    - `!conv https://www.youtube.com/watch?v=dQw4w9WgXcQ 480p` → 480p video
+    - `!conv https://www.youtube.com/watch?v=dQw4w9WgXcQ 720p` → 720p HD video
   - **Features**:
-    - Supports both youtube.com/watch and youtu.be short URLs
-    - Shows conversion progress with "🎵 Converting..." message
-    - **Auto-downloads and sends MP3 as WhatsApp document**
-    - Includes metadata (title, duration, file size) in caption
-    - Fallback to download link if auto-download fails
-    - Built-in URL validation and error handling
-    - Rate limiting to prevent spam requests
-    - Timeout handling for large videos (2-minute download timeout)
-    - Clean filename generation (removes special characters)
-    - User-friendly error messages for different failure scenarios
+    - 🎵 **Multi-Format Support** - MP3 (audio) and MP4 (video with audio)
+    - 🎯 **Quality Selection** - Choose from mp3, 360p, 480p, 720p
+    - 📱 **Smart Quality Recommendations** - Suggests 360p for mobile viewing
+    - 📦 **File Size Management** - Automatic size check with quality suggestions
+    - 🚀 **Fast Downloads** - Direct streaming from YTStream API
+    - 📊 **Rich Metadata** - Includes title, duration, views, channel info
+    - ⚠️ **Error Recovery** - Quality-specific error messages with alternatives
+    - 🔒 **Rate Limiting** - Prevents spam with per-user cooldowns
+    - 🎨 **Clean Filenames** - Auto-generates valid filenames
+    - ✅ **URL Validation** - Supports youtube.com/watch and youtu.be formats
+    - 💾 **WhatsApp Limit Aware** - Warns if file exceeds 100MB limit
 
 ### 👨‍💻 Developer Info Commands
 - **`!aboutdev`** - Get detailed developer information with live GitHub data and avatar
@@ -227,6 +274,7 @@ npm install
 # Configure environment
 echo "MONGODB_URI=your_mongodb_connection_string" > .env
 echo "GEMINI_API_KEY=your_gemini_api_key" >> .env
+echo "RAPIDAPI_KEY=your_rapidapi_key" >> .env
 echo "GITHUB_USERNAME=PasinduOG" >> .env
 
 # Start bot
@@ -256,6 +304,7 @@ npm start
    # Create .env file
    MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/database
    GEMINI_API_KEY=your-gemini-api-key-here
+   RAPIDAPI_KEY=your-rapidapi-key-here
    GITHUB_USERNAME=PasinduOG
    NODE_ENV=development
    PORT=3000
@@ -286,6 +335,7 @@ heroku create your-iron-man-bot
 # Set environment variables
 heroku config:set MONGODB_URI="mongodb+srv://username:password@cluster.mongodb.net/database"
 heroku config:set GEMINI_API_KEY="your-gemini-api-key-here"
+heroku config:set RAPIDAPI_KEY="your-rapidapi-key-here"
 heroku config:set GITHUB_USERNAME="PasinduOG"
 
 # Deploy to Heroku
@@ -315,6 +365,15 @@ heroku config:set GEMINI_API_KEY="your-gemini-api-key-here"
 GEMINI_API_KEY=your-gemini-api-key-here
 ```
 
+### Required for YouTube Downloads:
+```bash
+# Heroku (RapidAPI - YTStream)
+heroku config:set RAPIDAPI_KEY="your-rapidapi-key-here"
+
+# Local (.env file)
+RAPIDAPI_KEY=your-rapidapi-key-here
+```
+
 ### Optional Configurations:
 ```bash
 # Heroku
@@ -328,6 +387,20 @@ PORT=3000
 GITHUB_USERNAME=PasinduOG
 ```
 
+### API Keys Setup:
+
+**1. Google Gemini API (AI Features):**
+- Visit: [aistudio.google.com](https://aistudio.google.com)
+- Create API Key (Free tier available)
+- Add to environment variables as `GEMINI_API_KEY`
+
+**2. RapidAPI Key (YouTube Downloads):**
+- Visit: [rapidapi.com](https://rapidapi.com)
+- Subscribe to: **YTStream Download YouTube Videos API**
+- API URL: `ytstream-download-youtube-videos.p.rapidapi.com`
+- Copy API key and add as `RAPIDAPI_KEY`
+- Features: MP3 audio + MP4 video downloads with multiple quality options
+
 ### MongoDB Setup Guide:
 1. **Create MongoDB Atlas Account** - [mongodb.com/atlas](https://www.mongodb.com/atlas)
 2. **Create Cluster** - Free tier available
@@ -335,11 +408,18 @@ GITHUB_USERNAME=PasinduOG
 4. **Get Connection String** - Replace `<username>`, `<password>`, `<cluster>`
 5. **Whitelist IP Address** - Add `0.0.0.0/0` for Heroku or your IP for local
 
-### Google Gemini API Setup:
+### RapidAPI Setup (YouTube Downloads):
+1. **Create RapidAPI Account** - [rapidapi.com](https://rapidapi.com)
+2. **Subscribe to YTStream API** - Search for "YTStream Download YouTube Videos"
+3. **Copy API Key** - Found in API dashboard under "X-RapidAPI-Key"
+4. **Add to Environment** - Set as `RAPIDAPI_KEY`
+5. **Features**: Supports MP3 (audio) and MP4 (video) with quality options
+
+### Google Gemini API Setup (AI Features):
 1. **Visit Google AI Studio** - [aistudio.google.com](https://aistudio.google.com)
-2. **Create API Key** - Free tier available
-3. **Copy API Key** - Add to environment variables
-4. **Test API** - Verify key works with a simple request
+2. **Create API Key** - Free tier available with generous limits
+3. **Copy API Key** - Add to environment variables as `GEMINI_API_KEY`
+4. **Test API** - Bot will automatically test on first AI command
 
 ## 🔧 Dynamic GitHub Integration
 
@@ -415,14 +495,67 @@ GITHUB_USERNAME=PasinduOG
 4. **Automatic Cleanup**: Maintains only latest 10 exchanges per user
 5. **User Control**: Users can clear their memory anytime for privacy
 
+## 🎬 YouTube Download System
+
+### YTStream API Integration
+The bot uses **YTStream Download YouTube Videos API** from RapidAPI for powerful media downloading capabilities.
+
+**API Endpoint:** `ytstream-download-youtube-videos.p.rapidapi.com`
+
+### Supported Formats & Qualities:
+
+**Audio Formats:**
+- 🎵 **MP3** - High-quality audio extraction (128kbps AAC)
+- 📦 File Size: ~3-5 MB per 3-minute song
+- 💡 Best for: Music, podcasts, audio content
+
+**Video Formats:**
+- 🎬 **360p** - Mobile-optimized video (~10-20 MB)
+- 🎬 **480p** - Standard definition video (~15-30 MB)
+- 🎬 **720p** - HD video quality (~20-50 MB)
+- 📦 All videos include audio track
+- 💡 Best for: Mobile viewing, sharing, archiving
+
+### Download Features:
+- ✅ **Direct Downloads** - No third-party redirects
+- ✅ **Fast Processing** - Streaming API for quick downloads
+- ✅ **Rich Metadata** - Title, duration, views, channel info
+- ✅ **Smart Limits** - 100MB WhatsApp limit awareness
+- ✅ **Quality Fallback** - Automatic suggestions if quality unavailable
+- ✅ **Error Recovery** - Detailed error messages with alternatives
+- ✅ **Rate Limiting** - Per-user cooldowns to prevent abuse
+- ✅ **Clean Filenames** - Auto-sanitized for WhatsApp compatibility
+
+### Technical Details:
+- **API Response Time:** ~2-5 seconds for metadata
+- **Download Time:** Varies by quality and video length
+- **Concurrent Requests:** Handled per-user with rate limiting
+- **Cache Strategy:** No caching (always fresh downloads)
+- **Timeout Handling:** 120-second download timeout
+- **Format Selection:** Intelligent itag-based format selection
+
+### Quality Recommendations:
+| Quality | Use Case | Avg File Size | Best For |
+|---------|----------|--------------|----------|
+| MP3 | Audio only | 3-5 MB | Music, podcasts |
+| 360p | Mobile viewing | 10-20 MB | Quick shares |
+| 480p | Standard video | 15-30 MB | Balanced quality |
+| 720p | HD viewing | 20-50 MB | Desktop viewing |
+
+### API Upgrade History:
+- **v1.5.0** - Upgraded to YTStream API for video support
+- **Previous** - youtube-mp3-audio-video-downloader (MP3 only)
+- **Improvement** - Added multi-format and quality selection
+
 ## 📋 Testing & Usage Examples
 
 ### Quick Test Commands:
 1. **Basic greeting**: Send `hi` in WhatsApp
 2. **Bot status**: `!ping` or `!alive` to check if bot is responsive
 3. **AI test**: `!chat what is artificial intelligence?`
-4. **YouTube conversion**: `!conv https://www.youtube.com/watch?v=dQw4w9WgXcQ`
-5. **Memory check**: `!memory` to see your conversation memory stats
+4. **YouTube audio**: `!conv https://www.youtube.com/watch?v=dQw4w9WgXcQ` (MP3)
+5. **YouTube video**: `!conv https://www.youtube.com/watch?v=dQw4w9WgXcQ 360p` (MP4)
+6. **Memory check**: `!memory` to see your conversation memory stats
 6. **Help**: `!help` for bot information with image
 7. **Commands list**: `!commands` for all available commands
 8. **Developer info**: `!aboutdev` for live GitHub profile with avatar
@@ -457,11 +590,24 @@ The bot uses Google Gemini AI with conversation memory to provide intelligent re
 **User**: `!forgetme`
 **Bot**: *🧠 Memory Cleared Successfully - All your conversation memory has been cleared*
 
-**YouTube Conversion Examples:**
+**YouTube Download Examples:**
+
+**Audio Download (MP3):**
 **User**: `!conv https://www.youtube.com/watch?v=dQw4w9WgXcQ`
-**Bot**: *🎵 Converting YouTube video to MP3... ⏳ This may take a few moments, please wait.*
-**Bot**: *📥 Downloading MP3 file... 🎵 Rick Astley - Never Gonna Give You Up ⏳ Please wait while I download and send the file.*
-**Bot**: *[Sends MP3 as document with caption: 🎵 Rick Astley - Never Gonna Give You Up ⏱️ Duration: 3:33 � File Size: 5.2 MB ⚡ Converted by IRON-MAN Bot v1.5.0]*
+**Bot**: *🎵 Converting YouTube video to MP3... ⏳ Please wait, this may take a few moments.*
+**Bot**: *📥 Downloading MP3 file... 🎵 Rick Astley - Never Gonna Give You Up ⏱️ Duration: 3:33*
+**Bot**: *[Sends MP3 as document with caption: 🎵 Rick Astley - Never Gonna Give You Up ⏱️ Duration: 3:33 📁 File Size: 5.2 MB 🎯 Quality: MP3 ⚡ Downloaded by IRON-MAN Bot v1.5.0]*
+
+**Video Download (360p):**
+**User**: `!conv https://www.youtube.com/watch?v=dQw4w9WgXcQ 360p`
+**Bot**: *🎬 Converting YouTube video to 360P video... ⏳ Please wait, this may take a few moments.*
+**Bot**: *📥 Downloading MP4 file... 🎬 Rick Astley - Never Gonna Give You Up ⏱️ Duration: 3:33*
+**Bot**: *[Sends MP4 as document with caption: � Rick Astley - Never Gonna Give You Up ⏱️ Duration: 3:33 📁 File Size: 12.8 MB 🎯 Quality: 360P ⚡ Downloaded by IRON-MAN Bot v1.5.0]*
+
+**HD Video Download (720p):**
+**User**: `!conv https://www.youtube.com/watch?v=dQw4w9WgXcQ 720p`
+**Bot**: *🎬 Converting YouTube video to 720P video... ⏳ Please wait, this may take a few moments.*
+**Bot**: *[Sends HD MP4 as document with metadata and larger file size]*
 
 ### Sticker Creation Examples:
 - Send any image with caption `!sticker` → Creates static sticker
@@ -510,21 +656,26 @@ The bot intelligently recognizes all 22+ valid commands and provides helpful vid
 ✅ Uptime Monitoring            ✅ Welcome Menu System           
 ✅ Comprehensive Command List    ✅ Memory Management Commands
 ✅ Context-Aware AI Responses    ✅ Automatic Memory Cleanup
-✅ YouTube to MP3 Conversion    ✅ MIT License Implementation    ✅ Clean Media Handling
+✅ YouTube Media Downloads       ✅ Multi-Quality Support (MP3/MP4)
+✅ YTStream API Integration     ✅ Video Download (360p/480p/720p)
+✅ MIT License Implementation   ✅ Clean Media Handling
 ✅ Optimized User Experience    ✅ Non-Intrusive Operation
+✅ File Size Management         ✅ Quality-Specific Errors
 
 ### 🚀 Future Enhancements
 
 - 📊 Usage analytics dashboard  
 - 🌐 Multi-language support
 - 🔊 Voice message processing
-- 📺 YouTube video downloads
 - 🎮 Interactive games
 - 📰 News updates integration
 - 🤖 Advanced AI personality modes
 - 📈 Extended memory analytics
 - 🔄 Memory export/import features
 - 🎵 Playlist conversion support
+- 🎬 1080p video quality support
+- 📹 YouTube Shorts support
+- 🎥 Video thumbnail preview
 
 ## 🤝 Contributing
 
