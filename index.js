@@ -1562,7 +1562,7 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                         const durationFormatted = videoDuration ? `${Math.floor(videoDuration / 60)}:${(videoDuration % 60).toString().padStart(2, '0')}` : 'Unknown';
                         
                         // Send download status with estimated time
-                        const estimatedSizeMB = format.contentLength ? (format.contentLength / 1024 / 1024).toFixed(2) : 'Unknown';
+                        const estimatedSizeMB = result.format && result.format.contentLength ? (result.format.contentLength / 1024 / 1024).toFixed(2) : 'Unknown';
                         await sock.sendMessage(chatId, {
                             text: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}📥 *Downloading ${fileType.toUpperCase()} file...*\n\n${isAudio ? '🎵' : '🎬'} *${videoTitle}*\n⏱️ Duration: ${durationFormatted}\n📦 Size: ~${estimatedSizeMB} MB\n⏳ Please wait while I prepare your file.\n\n💡 Larger files may take 30-60 seconds to download and send.`,
                             mentions: isGroup ? [actualSender] : []
