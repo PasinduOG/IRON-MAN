@@ -684,40 +684,94 @@ async function handleAIRequestInternal(client, msg, args, userId, userNumber, pr
 }
 
 // YouTube to MP3 Conversion Function
-async function convertYouTubeToMP3(url) {
+// Extract YouTube video ID from URL
+function extractYouTubeVideoId(url) {
+    // Support various YouTube URL formats
+    const patterns = [
+        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+        /^([a-zA-Z0-9_-]{11})$/  // Direct video ID
+    ];
+    
+    for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) {
+            return match[1];
+        }
+    }
+    return null;
+}
+
+// Get YouTube video information
+async function getYouTubeVideoInfo(videoId) {
     const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || '2f04d689f3msh8b4ddfc2299fa37p1e8d90jsn35709382433c';
     
     const options = {
-        method: 'POST',
-        url: 'https://youtube-to-mp337.p.rapidapi.com/api/converttomp3',
+        method: 'GET',
+        url: `https://youtube-mp3-audio-video-downloader.p.rapidapi.com/get-video-info/${videoId}`,
         headers: {
             'x-rapidapi-key': RAPIDAPI_KEY,
-            'x-rapidapi-host': 'youtube-to-mp337.p.rapidapi.com',
-            'Content-Type': 'application/json'
+            'x-rapidapi-host': 'youtube-mp3-audio-video-downloader.p.rapidapi.com'
         },
-        data: {
-            url: url
-        },
-        timeout: 45000 // Reduced timeout to 45 seconds for faster response
+        timeout: 30000
     };
 
     try {
-        console.log(`🎵 Converting YouTube URL: ${url}`);
+        console.log(`📹 Fetching video info for: ${videoId}`);
         const response = await axios.request(options);
-        console.log(`✅ Conversion response status:`, response.status);
-        console.log(`✅ Conversion response data:`, JSON.stringify(response.data, null, 2));
-        
-        // Check if response has the expected structure
-        if (!response.data) {
-            throw new Error('Empty response from conversion service');
-        }
-        
+        console.log(`✅ Video info retrieved successfully`);
         return response.data;
     } catch (error) {
-        console.error(`❌ YouTube conversion error:`, error.message);
+        console.error(`❌ Error fetching video info:`, error.message);
+        throw error;
+    }
+}
+
+// Download YouTube video as MP3
+async function convertYouTubeToMP3(url) {
+    const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || '2f04d689f3msh8b4ddfc2299fa37p1e8d90jsn35709382433c';
+    
+    // Extract video ID from URL
+    const videoId = extractYouTubeVideoId(url);
+    if (!videoId) {
+        throw new Error('Invalid YouTube URL or video ID');
+    }
+    
+    console.log(`🎵 Converting YouTube video: ${videoId}`);
+    
+    // First, get video info to provide user with details
+    let videoInfo;
+    try {
+        videoInfo = await getYouTubeVideoInfo(videoId);
+    } catch (infoError) {
+        console.log(`⚠️ Could not fetch video info, continuing with download...`);
+    }
+    
+    // Download MP3
+    const options = {
+        method: 'GET',
+        url: `https://youtube-mp3-audio-video-downloader.p.rapidapi.com/download-mp3/${videoId}`,
+        headers: {
+            'x-rapidapi-key': RAPIDAPI_KEY,
+            'x-rapidapi-host': 'youtube-mp3-audio-video-downloader.p.rapidapi.com'
+        },
+        responseType: 'stream',
+        timeout: 60000 // 60 seconds for download
+    };
+
+    try {
+        console.log(`⬇️ Downloading MP3...`);
+        const response = await axios.request(options);
+        console.log(`✅ MP3 download stream ready`);
+        
+        return {
+            stream: response.data,
+            videoInfo: videoInfo,
+            videoId: videoId
+        };
+    } catch (error) {
+        console.error(`❌ YouTube MP3 download error:`, error.message);
         if (error.response) {
             console.error(`❌ Response status:`, error.response.status);
-            console.error(`❌ Response data:`, JSON.stringify(error.response.data, null, 2));
         }
         throw error;
     }
@@ -1363,18 +1417,7 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                 const mentionText = isGroup ? `@${actualSender.split('@')[0]} ` : '';
                 const mentions = isGroup ? [actualSender] : [];
                 await sock.sendMessage(chatId, { 
-                    text: `${mentionText}❌ Usage: !conv <youtube_url>\n\n📌 Example: !conv https://www.youtube.com/watch?v=dQw4w9WgXcQ\n💡 The MP3 will be automatically downloaded and sent as a document!`,
-                    mentions
-                });
-                return;
-            }
-
-            // Basic URL validation
-            if (!url.includes('youtube.com/watch') && !url.includes('youtu.be/')) {
-                const mentionText = isGroup ? `@${actualSender.split('@')[0]} ` : '';
-                const mentions = isGroup ? [actualSender] : [];
-                await sock.sendMessage(chatId, { 
-                    text: `${mentionText}❌ Please provide a valid YouTube URL\n\n📌 Supported formats:\n• https://www.youtube.com/watch?v=...\n• https://youtu.be/...`,
+                    text: `${mentionText}❌ Usage: !conv <youtube_url_or_video_id>\n\n📌 Examples:\n• !conv https://www.youtube.com/watch?v=dQw4w9WgXcQ\n• !conv dQw4w9WgXcQ\n💡 The MP3 will be automatically downloaded and sent as a document!`,
                     mentions
                 });
                 return;
@@ -1405,44 +1448,38 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                 const mentionText = isGroup ? `@${actualSender.split('@')[0]} ` : '';
                 const mentions = isGroup ? [actualSender] : [];
                 await sock.sendMessage(chatId, { 
-                    text: `${mentionText}🎵 Converting YouTube video to MP3...\n⏳ This may take a few moments, please wait.\n\n🔗 URL: ${url}`,
+                    text: `${mentionText}🎵 Converting YouTube video to MP3...\n⏳ Please wait, this may take a few moments.\n\n🔗 URL: ${url}`,
                     mentions
                 });
 
-                // Convert YouTube to MP3
+                // Convert YouTube to MP3 and get video info
                 const result = await convertYouTubeToMP3(url);
                 
-                console.log(`🔍 Conversion result structure:`, JSON.stringify(result, null, 2));
-                
-                if (result && (result.downloadUrl || result.url)) {
-                    // Get the download URL (API might return either 'downloadUrl' or 'url')
-                    const downloadLink = result.downloadUrl || result.url;
+                if (result && result.stream) {
+                    const { stream, videoInfo, videoId } = result;
                     
                     try {
-                        // Send downloading message
+                        // Send downloading message with video info if available
+                        const videoTitle = videoInfo?.title || 'Unknown';
+                        const videoDuration = videoInfo?.lengthSeconds || null;
+                        
                         await sock.sendMessage(chatId, {
-                            text: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}📥 *Downloading MP3 file...*\n\n🎵 *${result.title || 'Unknown'}*\n⏳ Please wait while I download and send the file.`,
+                            text: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}📥 *Downloading MP3 file...*\n\n🎵 *${videoTitle}*\n${videoDuration ? `⏱️ Duration: ${Math.floor(videoDuration / 60)}:${(videoDuration % 60).toString().padStart(2, '0')}\n` : ''}⏳ Please wait while I prepare your file.`,
                             mentions: isGroup ? [actualSender] : []
                         });
 
-                        console.log(`📥 Downloading MP3 from: ${downloadLink}`);
+                        console.log(`📥 Downloading MP3 stream for video: ${videoId}`);
                         
-                        // Download the MP3 file
-                        const downloadResponse = await axios.get(downloadLink, {
-                            responseType: 'arraybuffer',
-                            timeout: 120000, // 2 minutes timeout for download
-                            headers: {
-                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                            }
-                        });
-
-                        const mp3Buffer = Buffer.from(downloadResponse.data);
+                        // Convert stream to buffer
+                        const chunks = [];
+                        for await (const chunk of stream) {
+                            chunks.push(chunk);
+                        }
+                        const mp3Buffer = Buffer.concat(chunks);
                         console.log(`✅ MP3 downloaded successfully. Size: ${(mp3Buffer.length / 1024 / 1024).toFixed(2)} MB`);
 
                         // Generate a clean filename
-                        let filename = result.title || 'audio';
-                        // Remove special characters and limit length
-                        filename = filename.replace(/[^\w\s-]/g, '').trim();
+                        let filename = videoTitle.replace(/[^\w\s-]/g, '').trim();
                         filename = filename.substring(0, 50); // Limit to 50 characters
                         filename = `${filename}.mp3`;
 
@@ -1451,47 +1488,33 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                             document: mp3Buffer,
                             fileName: filename,
                             mimetype: 'audio/mpeg',
-                            caption: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}🎵 *${result.title || 'Audio File'}*\n\n` +
-                                   `⏱️ *Duration:* ${result.duration ? `${Math.floor(result.duration / 60)}:${(result.duration % 60).toString().padStart(2, '0')}` : 'Unknown'}\n` +
+                            caption: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}🎵 *${videoTitle}*\n\n` +
+                                   `${videoDuration ? `⏱️ *Duration:* ${Math.floor(videoDuration / 60)}:${(videoDuration % 60).toString().padStart(2, '0')}\n` : ''}` +
                                    `📁 *File Size:* ${(mp3Buffer.length / 1024 / 1024).toFixed(2)} MB\n` +
+                                   `👁️ *Views:* ${videoInfo?.viewCount ? parseInt(videoInfo.viewCount).toLocaleString() : 'Unknown'}\n` +
+                                   `👤 *Channel:* ${videoInfo?.ownerChannelName || 'Unknown'}\n` +
                                    `⚡ *Converted by IRON-MAN Bot v${BOT_VERSION}*`,
                             mentions: isGroup ? [actualSender] : []
                         });
 
-                        console.log(`✅ MP3 document sent successfully to ${senderName}: ${result.title}`);
+                        console.log(`✅ MP3 document sent successfully to ${senderName}: ${videoTitle}`);
 
                     } catch (downloadError) {
-                        console.error(`❌ Download error for ${senderName}:`, downloadError.message);
+                        console.error(`❌ Download/send error for ${senderName}:`, downloadError.message);
                         
-                        // Fallback to sending download link if direct download fails
                         await sock.sendMessage(chatId, {
-                            text: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}⚠️ *Auto-download failed, but conversion was successful!*\n\n` +
-                                  `🎵 *Title:* ${result.title || 'Unknown'}\n` +
-                                  `⏱️ *Duration:* ${result.duration ? `${Math.floor(result.duration / 60)}:${(result.duration % 60).toString().padStart(2, '0')}` : 'Unknown'}\n` +
-                                  `📥 *Download Link:* ${downloadLink}\n\n` +
-                                  `💡 Click the link above to download your MP3 file manually!\n` +
-                                  `⚡ *Converted by IRON-MAN Bot*`,
+                            text: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}❌ Failed to download or send the MP3 file.\n\n` +
+                                  `⚠️ Error: ${downloadError.message}\n\n` +
+                                  `� The video might be too large or unavailable. Try with a shorter video!`,
                             mentions: isGroup ? [actualSender] : []
                         });
                     }
                 } else {
-                    // More detailed error message based on response
-                    let errorDetail = "The video might be private, unavailable, or too long.";
-                    if (result) {
-                        if (result.error) {
-                            errorDetail = `API Error: ${result.error}`;
-                        } else if (result.message) {
-                            errorDetail = `Service Message: ${result.message}`;
-                        } else {
-                            errorDetail = `Unexpected response format. Missing download URL.`;
-                        }
-                    }
-                    
                     await sock.sendMessage(chatId, { 
-                        text: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}❌ Conversion failed. ${errorDetail}\n\n💡 Try with a different video or check if the URL is correct.`,
+                        text: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}❌ Conversion failed. Invalid YouTube URL or video ID.\n\n💡 Please check the URL and try again.`,
                         mentions: isGroup ? [actualSender] : []
                     });
-                    console.log(`❌ Conversion failed for ${senderName}. Result:`, result);
+                    console.log(`❌ Conversion failed for ${senderName}. Invalid result structure.`);
                 }
 
             } catch (error) {
