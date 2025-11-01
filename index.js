@@ -918,57 +918,57 @@ async function startBot() {
             const userId = actualSender; // Use actual sender for individual tracking
             const senderName = msg.pushName || 'User';
 
-        // Get or create user session (individual user tracking even in groups)
-        const userSession = getUserSession(userId);
+            // Get or create user session (individual user tracking even in groups)
+            const userSession = getUserSession(userId);
 
-        // Log message with group context
-        const contextInfo = isGroup ? `${senderName} in group ${chatId.split('@')[0]}` : senderName;
-        console.log(`📨 Message #${userSession.messageCount} from ${contextInfo} (${userId})`);
+            // Log message with group context
+            const contextInfo = isGroup ? `${senderName} in group ${chatId.split('@')[0]}` : senderName;
+            console.log(`📨 Message #${userSession.messageCount} from ${contextInfo} (${userId})`);
 
-        // Extract message text from different message types
-        const messageText = (msg.message?.conversation ||
-            msg.message?.extendedTextMessage?.text ||
-            msg.message?.imageMessage?.caption ||
-            msg.message?.videoMessage?.caption ||
-            msg.message?.gifMessage?.caption ||
-            '').trim();
+            // Extract message text from different message types
+            const messageText = (msg.message?.conversation ||
+                msg.message?.extendedTextMessage?.text ||
+                msg.message?.imageMessage?.caption ||
+                msg.message?.videoMessage?.caption ||
+                msg.message?.gifMessage?.caption ||
+                '').trim();
 
-        // Check general rate limiting for commands (per individual user)
-        if (messageText.startsWith('!')) {
-            const rateCheck = checkRateLimit(userId, 'general');
-            if (!rateCheck.allowed) {
-                return sock.sendMessage(chatId, { 
-                    text: `⏰ @${userId.split('@')[0]} ${rateCheck.reason}`,
-                    mentions: [userId]
+            // Check general rate limiting for commands (per individual user)
+            if (messageText.startsWith('!')) {
+                const rateCheck = checkRateLimit(userId, 'general');
+                if (!rateCheck.allowed) {
+                    return sock.sendMessage(chatId, { 
+                        text: `⏰ @${userId.split('@')[0]} ${rateCheck.reason}`,
+                        mentions: [userId]
+                    });
+                }
+            }
+
+            const welcomeRegex = /^(hi|hello|hey)(\s|$)/i;
+            const greetingRegex = /^(jarvis)(\s|$)/i;
+
+            if (welcomeRegex.test(messageText)) {
+                const personalizedWelcome = isGroup 
+                    ? `Hello @${userId.split('@')[0]}! 👋 ${welcomeMessage}`
+                    : welcomeMessage;
+                sock.sendMessage(chatId, { 
+                    text: personalizedWelcome,
+                    mentions: isGroup ? [userId] : undefined
                 });
             }
-        }
 
-        const welcomeRegex = /^(hi|hello|hey)(\s|$)/i;
-        const greetingRegex = /^(jarvis)(\s|$)/i;
+            if (greetingRegex.test(messageText)) {
+                const personalizedGreeting = isGroup 
+                    ? `@${userId.split('@')[0]} ${greetingMessge}`
+                    : greetingMessge;
+                sock.sendMessage(chatId, { 
+                    text: personalizedGreeting,
+                    mentions: isGroup ? [userId] : undefined
+                });
+            }
 
-        if (welcomeRegex.test(messageText)) {
-            const personalizedWelcome = isGroup 
-                ? `Hello @${userId.split('@')[0]}! 👋 ${welcomeMessage}`
-                : welcomeMessage;
-            sock.sendMessage(chatId, { 
-                text: personalizedWelcome,
-                mentions: isGroup ? [userId] : undefined
-            });
-        }
-
-        if (greetingRegex.test(messageText)) {
-            const personalizedGreeting = isGroup 
-                ? `@${userId.split('@')[0]} ${greetingMessge}`
-                : greetingMessge;
-            sock.sendMessage(chatId, { 
-                text: personalizedGreeting,
-                mentions: isGroup ? [userId] : undefined
-            });
-        }
-
-        if (messageText === '!help') {
-            const imageBuffer = fs.readFileSync('./src/ironman.jpg') // your image path
+            if (messageText === '!help') {
+                const imageBuffer = fs.readFileSync('./src/ironman.jpg') // your image path
             
             const helpCaption = `🤖 *IRON-MAN Bot Help Center*
 
@@ -1569,7 +1569,9 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                         filename = `${filename}.${fileType}`;
 
                         // Send the file as a document
-                        await sock.sendMessage(chatId, {
+                        console.log(`📤 Attempting to send ${fileType.toUpperCase()} file to WhatsApp...`);
+                        
+                        const sendResult = await sock.sendMessage(chatId, {
                             document: mediaBuffer,
                             fileName: filename,
                             mimetype: mimeType,
@@ -1581,6 +1583,10 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                                    `👤 *Channel:* ${videoInfo?.channel || 'Unknown'}\n` +
                                    `⚡ *Downloaded by IRON-MAN Bot v${BOT_VERSION}*`,
                             mentions: isGroup ? [actualSender] : []
+                        }).catch(sendError => {
+                            // Log send error but don't throw - MongoDB timeout shouldn't block send
+                            console.error(`⚠️ Warning during send (might still succeed):`, sendError.message);
+                            return { status: 'sent-with-warnings' };
                         });
 
                         console.log(`✅ ${fileType.toUpperCase()} document sent successfully to ${senderName}: ${videoTitle}`);

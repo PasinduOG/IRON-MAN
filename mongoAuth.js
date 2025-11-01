@@ -9,12 +9,14 @@ class MongoAuthState {
         this.client = null;
         this.collection = null;
         this.connectionOptions = {
-            maxPoolSize: 5,              // Smaller pool for auth operations
-            minPoolSize: 1,
-            maxIdleTimeMS: 30000,
-            serverSelectionTimeoutMS: 3000,
-            connectTimeoutMS: 5000,
+            maxPoolSize: 10,              // Increased pool for better concurrency
+            minPoolSize: 2,
+            maxIdleTimeMS: 60000,         // Increased idle time
+            serverSelectionTimeoutMS: 10000, // Increased to 10 seconds
+            connectTimeoutMS: 15000,      // Increased to 15 seconds for large operations
+            socketTimeoutMS: 30000,       // Added socket timeout (30 seconds)
             retryWrites: true,
+            retryReads: true,             // Added retry reads
             writeConcern: { w: 1, j: false } // Faster writes for auth
         };
     }
@@ -89,13 +91,24 @@ class MongoAuthState {
 
     async readKey(keyId) {
         try {
-            const doc = await this.collection.findOne({ _id: keyId });
+            const doc = await this.collection.findOne(
+                { _id: keyId },
+                { 
+                    maxTimeMS: 10000, // 10 second timeout for read
+                    readPreference: 'primaryPreferred' // Fallback to secondary if primary is slow
+                }
+            );
             if (doc && doc.data) {
                 return JSON.parse(doc.data, BufferJSON.reviver);
             }
             return null;
         } catch (error) {
-            console.error(`Error reading key ${keyId} from MongoDB:`, error);
+            // Only log timeout errors as warnings, not full errors
+            if (error.name === 'MongoNetworkTimeoutError' || error.message?.includes('timed out')) {
+                console.warn(`⚠️ MongoDB timeout reading key ${keyId} - continuing without it`);
+            } else {
+                console.error(`Error reading key ${keyId} from MongoDB:`, error.message);
+            }
             return null;
         }
     }
@@ -106,10 +119,19 @@ class MongoAuthState {
             await this.collection.replaceOne(
                 { _id: keyId },
                 { _id: keyId, data: serialized },
-                { upsert: true }
+                { 
+                    upsert: true,
+                    writeConcern: { w: 1, j: false }, // Fast writes
+                    maxTimeMS: 10000 // 10 second timeout for write
+                }
             );
         } catch (error) {
-            console.error(`Error writing key ${keyId} to MongoDB:`, error);
+            // Don't let MongoDB write errors block the application
+            if (error.name === 'MongoNetworkTimeoutError' || error.message?.includes('timed out')) {
+                console.warn(`⚠️ MongoDB timeout writing key ${keyId} - will retry later`);
+            } else {
+                console.error(`Error writing key ${keyId} to MongoDB:`, error.message);
+            }
         }
     }
 
