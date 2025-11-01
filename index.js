@@ -905,17 +905,18 @@ async function startBot() {
 
     // Handle message commands
     sock.ev.on('messages.upsert', async ({ messages }) => {
-        const msg = messages[0];
-        if (!msg.message) return;
+        try {
+            const msg = messages[0];
+            if (!msg.message) return;
 
-        // Ignore messages from the bot itself to prevent infinite loops
-        if (msg.key.fromMe) return;
+            // Ignore messages from the bot itself to prevent infinite loops
+            if (msg.key.fromMe) return;
 
-        const chatId = msg.key.remoteJid;
-        const isGroup = chatId.endsWith('@g.us');
-        const actualSender = isGroup ? msg.key.participant : chatId;
-        const userId = actualSender; // Use actual sender for individual tracking
-        const senderName = msg.pushName || 'User';
+            const chatId = msg.key.remoteJid;
+            const isGroup = chatId.endsWith('@g.us');
+            const actualSender = isGroup ? msg.key.participant : chatId;
+            const userId = actualSender; // Use actual sender for individual tracking
+            const senderName = msg.pushName || 'User';
 
         // Get or create user session (individual user tracking even in groups)
         const userSession = getUserSession(userId);
@@ -1764,6 +1765,20 @@ Your session statistics and other data remain unchanged.`,
                     mentions
                 });
             }
+        }
+        } catch (error) {
+            // Handle session/decryption errors gracefully
+            if (error.message?.includes('MessageCounterError') || 
+                error.message?.includes('decrypt') ||
+                error.message?.includes('session')) {
+                console.error('⚠️ Session decryption error (common WhatsApp issue):', error.message);
+                console.log('💡 This is usually temporary and will resolve on the next message');
+                // Don't crash the bot, just skip this message
+                return;
+            }
+            
+            // For other errors, log them but don't crash
+            console.error('❌ Error processing message:', error);
         }
     });
 
