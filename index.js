@@ -685,11 +685,13 @@ async function handleAIRequestInternal(client, msg, args, userId, userNumber, pr
 
 // YouTube to MP3 Conversion Function
 async function convertYouTubeToMP3(url) {
+    const RAPIDAPI_KEY = process.env.RAPIDAPI_KEY || '2f04d689f3msh8b4ddfc2299fa37p1e8d90jsn35709382433c';
+    
     const options = {
         method: 'POST',
         url: 'https://youtube-to-mp337.p.rapidapi.com/api/converttomp3',
         headers: {
-            'x-rapidapi-key': '2f04d689f3msh8b4ddfc2299fa37p1e8d90jsn35709382433c',
+            'x-rapidapi-key': RAPIDAPI_KEY,
             'x-rapidapi-host': 'youtube-to-mp337.p.rapidapi.com',
             'Content-Type': 'application/json'
         },
