@@ -710,15 +710,19 @@ async function getYouTubeVideoFormats(videoId) {
         url: `https://ytstream-download-youtube-videos.p.rapidapi.com/dl?id=${videoId}`,
         headers: {
             'x-rapidapi-key': RAPIDAPI_KEY,
-            'x-rapidapi-host': 'ytstream-download-youtube-videos.p.rapidapi.com'
+            'x-rapidapi-host': 'ytstream-download-youtube-videos.p.rapidapi.com',
+            'Accept-Encoding': 'gzip, deflate' // Enable compression
         },
-        timeout: 30000
+        timeout: 15000, // Reduced from 30s to 15s
+        decompress: true
     };
 
     try {
         console.log(`📹 Fetching video formats for: ${videoId}`);
+        const startTime = Date.now();
         const response = await axios.request(options);
-        console.log(`✅ Video formats retrieved successfully`);
+        const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+        console.log(`✅ Video formats retrieved successfully (${duration}s)`);
         return response.data;
     } catch (error) {
         console.error(`❌ Error fetching video formats:`, error.message);
@@ -805,12 +809,27 @@ async function downloadYouTubeMedia(url, quality = 'mp3') {
         throw new Error(`No suitable ${quality} format found for this video`);
     }
     
-    console.log(`⬇️ Downloading ${fileType.toUpperCase()} from URL...`);
+    // Check file size before downloading (if available in format info)
+    const expectedFileSizeMB = format.contentLength ? (format.contentLength / 1024 / 1024) : null;
+    if (expectedFileSizeMB && expectedFileSizeMB > 95) {
+        throw new Error(`File too large (${expectedFileSizeMB.toFixed(2)} MB). Try a lower quality.`);
+    }
     
-    // Download the file
+    console.log(`⬇️ Downloading ${fileType.toUpperCase()} from URL...${expectedFileSizeMB ? ` (Est. size: ${expectedFileSizeMB.toFixed(2)} MB)` : ''}`);
+    
+    // Download the file with optimized settings
     const response = await axios.get(downloadUrl, {
         responseType: 'stream',
-        timeout: 120000 // 2 minutes for download
+        timeout: 90000, // 90 seconds (reduced from 120s)
+        maxContentLength: 100 * 1024 * 1024, // 100MB max
+        maxBodyLength: 100 * 1024 * 1024,
+        decompress: true,
+        headers: {
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive'
+        },
+        // Add response timeout in addition to connection timeout
+        validateStatus: (status) => status === 200
     });
     
     console.log(`✅ Download stream ready`);
@@ -1516,6 +1535,7 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                 const isAudio = quality === 'mp3' || quality === 'audio';
                 const mediaType = isAudio ? 'MP3' : `${quality.toUpperCase()} video`;
                 
+                const startTime = Date.now();
                 console.log(`� YouTube download requested by ${senderName}: ${url} (${quality})`);
                 
                 // Send processing message
@@ -1527,7 +1547,10 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                 });
 
                 // Download YouTube media
+                console.log(`⏱️ Step 1: Fetching video info...`);
                 const result = await downloadYouTubeMedia(url, quality);
+                const fetchTime = ((Date.now() - startTime) / 1000).toFixed(2);
+                console.log(`⏱️ Video info fetched in ${fetchTime}s`);
                 
                 if (result && result.stream) {
                     const { stream, videoInfo, videoId, fileType, mimeType } = result;
@@ -1538,20 +1561,36 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                         const videoDuration = videoInfo?.duration || null;
                         const durationFormatted = videoDuration ? `${Math.floor(videoDuration / 60)}:${(videoDuration % 60).toString().padStart(2, '0')}` : 'Unknown';
                         
+                        // Send download status with estimated time
+                        const estimatedSizeMB = format.contentLength ? (format.contentLength / 1024 / 1024).toFixed(2) : 'Unknown';
                         await sock.sendMessage(chatId, {
-                            text: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}📥 *Downloading ${fileType.toUpperCase()} file...*\n\n${isAudio ? '🎵' : '🎬'} *${videoTitle}*\n⏱️ Duration: ${durationFormatted}\n⏳ Please wait while I prepare your file.`,
+                            text: `${isGroup ? `@${actualSender.split('@')[0]} ` : ''}📥 *Downloading ${fileType.toUpperCase()} file...*\n\n${isAudio ? '🎵' : '🎬'} *${videoTitle}*\n⏱️ Duration: ${durationFormatted}\n📦 Size: ~${estimatedSizeMB} MB\n⏳ Please wait while I prepare your file.\n\n💡 Larger files may take 30-60 seconds to download and send.`,
                             mentions: isGroup ? [actualSender] : []
                         });
 
                         console.log(`📥 Downloading ${fileType.toUpperCase()} stream for video: ${videoId}`);
                         
-                        // Convert stream to buffer
+                        // Convert stream to buffer with progress tracking
                         const chunks = [];
+                        let downloadedBytes = 0;
+                        let lastProgressUpdate = Date.now();
+                        const progressInterval = 5000; // Update every 5 seconds
+                        
                         for await (const chunk of stream) {
                             chunks.push(chunk);
+                            downloadedBytes += chunk.length;
+                            
+                            // Send progress update every 5 seconds for large files
+                            const now = Date.now();
+                            if (now - lastProgressUpdate > progressInterval && downloadedBytes > 1024 * 1024) {
+                                lastProgressUpdate = now;
+                                const downloadedMB = (downloadedBytes / 1024 / 1024).toFixed(2);
+                                console.log(`⏳ Downloaded ${downloadedMB} MB so far...`);
+                            }
                         }
                         const mediaBuffer = Buffer.concat(chunks);
-                        console.log(`✅ ${fileType.toUpperCase()} downloaded successfully. Size: ${(mediaBuffer.length / 1024 / 1024).toFixed(2)} MB`);
+                        const downloadTime = ((Date.now() - startTime) / 1000).toFixed(2);
+                        console.log(`✅ ${fileType.toUpperCase()} downloaded successfully. Size: ${(mediaBuffer.length / 1024 / 1024).toFixed(2)} MB (Download time: ${downloadTime}s)`);
 
                         // Check file size (WhatsApp limit is ~100MB for documents)
                         const fileSizeMB = mediaBuffer.length / 1024 / 1024;
@@ -1589,7 +1628,8 @@ ${isGroup ? `\n👥 *Group Context:* @${userId.split('@')[0]} These stats are pe
                             return { status: 'sent-with-warnings' };
                         });
 
-                        console.log(`✅ ${fileType.toUpperCase()} document sent successfully to ${senderName}: ${videoTitle}`);
+                        const totalTime = ((Date.now() - startTime) / 1000).toFixed(2);
+                        console.log(`✅ ${fileType.toUpperCase()} document sent successfully to ${senderName}: ${videoTitle} (Total time: ${totalTime}s)`);
 
                     } catch (downloadError) {
                         console.error(`❌ Download/send error for ${senderName}:`, downloadError.message);
