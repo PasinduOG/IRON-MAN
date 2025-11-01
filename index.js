@@ -19,6 +19,53 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 // Bot startup time tracking
 const startTime = Date.now();
 
+// Process-level error handlers for production stability
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('❌ Unhandled Promise Rejection:', reason);
+    console.error('Promise:', promise);
+    // Don't exit process, just log the error for monitoring
+});
+
+process.on('uncaughtException', (error) => {
+    console.error('❌ Uncaught Exception:', error);
+    // Log the error but attempt graceful recovery
+    if (error.code === 'EADDRINUSE') {
+        console.error('⚠️ Port already in use. Attempting to continue...');
+    } else {
+        console.error('⚠️ Critical error occurred, but continuing operation...');
+    }
+});
+
+// Graceful shutdown handlers
+process.on('SIGTERM', async () => {
+    console.log('🛑 SIGTERM received, shutting down gracefully...');
+    await gracefulShutdown();
+});
+
+process.on('SIGINT', async () => {
+    console.log('🛑 SIGINT received, shutting down gracefully...');
+    await gracefulShutdown();
+});
+
+async function gracefulShutdown() {
+    try {
+        console.log('🔄 Closing MongoDB connections...');
+        const { closeConnection } = require('./memoryManager');
+        await closeConnection();
+        
+        console.log('🔄 Clearing active processes...');
+        activeProcesses.clear();
+        userSessions.clear();
+        userRateLimits.clear();
+        
+        console.log('✅ Graceful shutdown complete');
+        process.exit(0);
+    } catch (error) {
+        console.error('❌ Error during shutdown:', error);
+        process.exit(1);
+    }
+}
+
 // Bot Version Configuration
 const BOT_VERSION = '1.5.0';
 const BOT_VERSION_NAME = 'AI Memory & Media Edition';
@@ -430,6 +477,25 @@ function cleanupMemoryCache() {
 setInterval(cleanupInactiveSessions, CLEANUP_INTERVAL);
 setInterval(cleanupMemoryCache, 2 * 60 * 1000); // Every 2 minutes
 
+// Input validation and sanitization helper
+function validateAndSanitizeInput(input, maxLength = 2000) {
+    if (!input || typeof input !== 'string') {
+        return { valid: false, error: 'Invalid input' };
+    }
+    
+    const sanitized = input.trim();
+    
+    if (sanitized.length === 0) {
+        return { valid: false, error: 'Empty input' };
+    }
+    
+    if (sanitized.length > maxLength) {
+        return { valid: false, error: `Input too long (max ${maxLength} characters)` };
+    }
+    
+    return { valid: true, sanitized };
+}
+
 // Enhanced AI Chat Handler with concurrent processing support
 async function handleChatCommand(client, msg, args) {
     const chatId = msg.key.remoteJid;
@@ -439,15 +505,20 @@ async function handleChatCommand(client, msg, args) {
     const userNumber = userId.split('@')[0];
     const prompt = args.join(" ");
 
-    if (!prompt) {
+    // Validate and sanitize input
+    const validation = validateAndSanitizeInput(prompt, 2000);
+    if (!validation.valid) {
         const errorMsg = isGroup 
-            ? `❌ @${userNumber} Usage: !chat <prompt>`
-            : "❌ Usage: !chat <prompt>";
+            ? `❌ @${userNumber} ${validation.error}. Usage: !chat <prompt>`
+            : `❌ ${validation.error}. Usage: !chat <prompt>`;
         return client.sendMessage(chatId, { 
             text: errorMsg,
             mentions: isGroup ? [userId] : undefined
         });
     }
+
+    // Use sanitized prompt
+    const sanitizedPrompt = validation.sanitized;
 
     // Check rate limiting (per individual user)
     const rateCheck = checkRateLimit(userId, 'ai');
@@ -465,8 +536,8 @@ async function handleChatCommand(client, msg, args) {
     
     // Check if we can process immediately or need to queue
     if (globalActiveAIRequests < MAX_CONCURRENT_AI_REQUESTS && userQueue.length === 0) {
-        // Process immediately
-        await handleAIRequestInternal(client, msg, args, userId, userNumber, prompt, chatId, isGroup);
+        // Process immediately with sanitized prompt
+        await handleAIRequestInternal(client, msg, args, userId, userNumber, sanitizedPrompt, chatId, isGroup);
     } else {
         // Check queue size limit
         if (userQueue.length >= MAX_USER_QUEUE_SIZE) {
@@ -479,8 +550,8 @@ async function handleChatCommand(client, msg, args) {
             });
         }
 
-        // Add to queue
-        userQueue.push({ msg, args, userId, userNumber, prompt, chatId, isGroup });
+        // Add to queue with sanitized prompt
+        userQueue.push({ msg, args, userId, userNumber, prompt: sanitizedPrompt, chatId, isGroup });
         
         // Send queue position feedback
         const queuePosition = userQueue.length;
@@ -694,16 +765,22 @@ async function startBot() {
             // Handle 401 Unauthorized - clear expired auth
             if (statusCode === 401 || lastDisconnect?.error?.message === 'Connection Failure') {
                 console.log('🔄 Auth session expired (401) - clearing old credentials...');
-                clearExpiredAuth().then(() => {
-                    console.log('✅ Ready for fresh QR code scan');
-                    setTimeout(() => {
-                        console.log('🔄 Restarting with new authentication...');
-                        startBot();
-                    }, 2000);
-                }).catch(err => {
-                    console.error('Error clearing auth:', err);
-                    setTimeout(() => startBot(), 3000);
-                });
+                clearExpiredAuth()
+                    .then(() => {
+                        console.log('✅ Ready for fresh QR code scan');
+                        setTimeout(() => {
+                            console.log('🔄 Restarting with new authentication...');
+                            startBot();
+                        }, 2000);
+                    })
+                    .catch(err => {
+                        console.error('❌ Error clearing auth:', err);
+                        // Still attempt restart even if clear fails
+                        setTimeout(() => {
+                            console.log('🔄 Attempting restart despite auth clear error...');
+                            startBot();
+                        }, 3000);
+                    });
             } else if (shouldReconnect) {
                 // Normal reconnection for other errors
                 setTimeout(() => {

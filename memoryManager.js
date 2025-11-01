@@ -23,8 +23,11 @@ const connectionOptions = {
     writeConcern: { w: 1, j: false } // Faster writes with journal disabled
 };
 
-// Connect to MongoDB with optimized settings
-async function connectToMongoDB() {
+// Connect to MongoDB with optimized settings and retry logic
+async function connectToMongoDB(retryCount = 0) {
+    const MAX_RETRIES = 3;
+    const RETRY_DELAY = 2000; // 2 seconds
+
     try {
         if (!client) {
             console.log('🔄 Connecting to MongoDB for memory management...');
@@ -45,17 +48,43 @@ async function connectToMongoDB() {
         }
         return { client, db, memoryCollection };
     } catch (error) {
-        console.error('❌ MongoDB connection error:', error);
-        throw error;
+        console.error(`❌ MongoDB connection error (attempt ${retryCount + 1}/${MAX_RETRIES}):`, error.message);
+        
+        // Retry logic with exponential backoff
+        if (retryCount < MAX_RETRIES) {
+            const delay = RETRY_DELAY * Math.pow(2, retryCount);
+            console.log(`⏳ Retrying MongoDB connection in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+            return connectToMongoDB(retryCount + 1);
+        } else {
+            console.error('❌ Max retry attempts reached. MongoDB connection failed.');
+            throw error;
+        }
     }
 }
 
-// Ensure connection before operations
+// Ensure connection before operations with health check
 async function ensureConnection() {
-    if (!client || !memoryCollection) {
-        await connectToMongoDB();
+    try {
+        // Check if client exists and is connected
+        if (!client || !memoryCollection) {
+            await connectToMongoDB();
+        } else {
+            // Perform health check
+            try {
+                await client.db().admin().ping();
+            } catch (pingError) {
+                console.warn('⚠️ MongoDB connection lost, reconnecting...');
+                client = null;
+                memoryCollection = null;
+                await connectToMongoDB();
+            }
+        }
+        return memoryCollection;
+    } catch (error) {
+        console.error('❌ Failed to ensure MongoDB connection:', error.message);
+        throw error;
     }
-    return memoryCollection;
 }
 
 /**

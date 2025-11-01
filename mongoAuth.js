@@ -19,7 +19,10 @@ class MongoAuthState {
         };
     }
 
-    async connect() {
+    async connect(retryCount = 0) {
+        const MAX_RETRIES = 3;
+        const RETRY_DELAY = 2000;
+
         try {
             this.client = new MongoClient(this.mongoUri, this.connectionOptions);
             await this.client.connect();
@@ -29,8 +32,18 @@ class MongoAuthState {
             // Note: _id index is created automatically, no need to create it explicitly
             console.log('✅ Connected to MongoDB for auth storage');
         } catch (error) {
-            console.error('❌ MongoDB connection failed:', error);
-            throw error;
+            console.error(`❌ MongoDB auth connection failed (attempt ${retryCount + 1}/${MAX_RETRIES}):`, error.message);
+            
+            // Retry with exponential backoff
+            if (retryCount < MAX_RETRIES) {
+                const delay = RETRY_DELAY * Math.pow(2, retryCount);
+                console.log(`⏳ Retrying auth connection in ${delay}ms...`);
+                await new Promise(resolve => setTimeout(resolve, delay));
+                return this.connect(retryCount + 1);
+            } else {
+                console.error('❌ Max retry attempts reached for auth connection.');
+                throw error;
+            }
         }
     }
 
